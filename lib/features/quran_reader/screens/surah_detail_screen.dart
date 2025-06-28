@@ -54,10 +54,7 @@ class SurahDetailScreen extends StatelessWidget {
         builder: (context, _) {
           final controller = AudioController.instance;
           final isCurrent = controller.currentSurah?.number == surahMeta.number;
-          if (controller.isBusy && isCurrent) {
-            if (controller.isDownloading) {
-              return FloatingActionButton(onPressed: null, child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white, value: controller.downloadProgress > 0 ? controller.downloadProgress : null)));
-            }
+          if (controller.isLoading && isCurrent) {
             return FloatingActionButton(onPressed: null, child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)));
           }
           final icon = (isCurrent && controller.isPlaying) ? Icons.pause : Icons.play_arrow;

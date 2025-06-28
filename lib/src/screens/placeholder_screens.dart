@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../features/quran_reader/screens/reciter_selection_screen.dart';
+import '../../audio/audio_controller.dart';
 
 // ------------------------------------------------------------
 // Simple placeholder screens for Phase 0. Each one returns a
@@ -37,7 +39,13 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _BasePlaceholder(label: 'Settings', icon: Icons.settings, color: Colors.teal.shade700);
+    return AnimatedBuilder(
+      animation: AudioController.instance,
+      builder: (context, _) {
+        final controller = AudioController.instance;
+        return ListView(children: [const Padding(padding: EdgeInsets.all(16), child: Text('Audio Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))), ListTile(leading: const Icon(Icons.person), title: const Text('Reciter'), subtitle: Text(controller.selectedReciterName), trailing: const Icon(Icons.arrow_forward_ios), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReciterSelectionScreen()))), const Divider(), const Padding(padding: EdgeInsets.all(16), child: Text('About', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))), const ListTile(leading: Icon(Icons.info), title: Text('Version'), subtitle: Text('1.0.0')), const ListTile(leading: Icon(Icons.book), title: Text('Audio Source'), subtitle: Text('quranapi.pages.dev'))]);
+      },
+    );
   }
 }
 

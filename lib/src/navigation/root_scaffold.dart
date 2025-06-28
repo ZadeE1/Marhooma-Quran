@@ -39,7 +39,21 @@ class _RootScaffoldState extends State<RootScaffold> {
               final controller = AudioController.instance;
               final surah = controller.currentSurah;
               final isPlaying = controller.isPlaying;
-              return Container(height: 64, padding: const EdgeInsets.symmetric(horizontal: 16), decoration: BoxDecoration(color: Colors.grey.shade900, border: const Border(top: BorderSide(color: Colors.black54, width: 0.5))), child: Row(children: [const Icon(Icons.graphic_eq, color: Colors.grey), const SizedBox(width: 12), Expanded(child: Text(surah != null ? surah.englishName : 'Nothing playing', style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis)), if (controller.isBusy) const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) else IconButton(icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white), onPressed: surah == null ? null : () => controller.toggle())]));
+              return Container(
+                height: 64,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(color: Colors.grey.shade900, border: const Border(top: BorderSide(color: Colors.black54, width: 0.5))),
+                child: Row(
+                  children: [
+                    const Icon(Icons.graphic_eq, color: Colors.grey),
+                    const SizedBox(width: 12),
+                    IconButton(icon: const Icon(Icons.skip_previous, color: Colors.white), onPressed: controller.queuedSurahs.length > 1 ? () => controller.seekToPrevious() : null),
+                    Expanded(child: Text(surah != null ? '${surah.englishName} ${controller.queuedSurahs.length > 1 ? '(${(controller.currentIndex ?? 0) + 1}/${controller.queuedSurahs.length})' : ''}' : 'Nothing playing', style: const TextStyle(color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                    IconButton(icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white), onPressed: surah == null ? null : () => controller.toggle()),
+                    IconButton(icon: const Icon(Icons.skip_next, color: Colors.white), onPressed: controller.queuedSurahs.length > 1 ? () => controller.seekToNext() : null),
+                  ],
+                ),
+              );
             },
           ),
         ],

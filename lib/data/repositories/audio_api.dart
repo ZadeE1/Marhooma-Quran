@@ -3,18 +3,28 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AudioApi {
-  static const _base = 'https://api.quran.com/api/v4';
-  static const _reciterId = 7; // Mishari Rashid al-Afasy 128kbps
+  static const _base = 'https://quranapi.pages.dev/api';
+  static const _reciterId = 1; // Mishary Rashid Al Afasy (default)
 
   const AudioApi();
 
-  /// Returns the mp3 URL for a complete surah recitation.
-  Future<String> fetchSurahAudio(int surahNumber) async {
-    final uri = Uri.parse('$_base/chapter_recitations/$_reciterId/$surahNumber');
+  /// Returns the mp3 URL for a complete surah recitation using quranapi.pages.dev
+  Future<String> fetchSurahAudio(int surahNumber, {int reciterId = _reciterId}) async {
+    final uri = Uri.parse('$_base/audio/$surahNumber.json');
     final res = await http.get(uri);
     if (res.statusCode != 200) throw Exception('Failed to load audio');
+
     final data = jsonDecode(res.body) as Map<String, dynamic>;
-    final audioFile = data['audio_file'] as Map<String, dynamic>;
-    return audioFile['audio_url'] as String;
+    final reciterData = data[reciterId.toString()] as Map<String, dynamic>?;
+
+    if (reciterData == null) {
+      throw Exception('Reciter $reciterId not found for surah $surahNumber');
+    }
+
+    // Prefer originalUrl for better performance, fallback to GitHub url
+    return (reciterData['originalUrl'] as String?) ?? (reciterData['url'] as String);
   }
+
+  /// Returns available reciters with their IDs and names
+  static const Map<int, String> availableReciters = {1: 'Mishary Rashid Al Afasy', 2: 'Abu Bakr Al Shatri', 3: 'Nasser Al Qatami', 4: 'Yasser Al Dosari', 5: 'Hani Ar Rifai'};
 }

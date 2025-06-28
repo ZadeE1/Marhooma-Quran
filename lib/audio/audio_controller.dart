@@ -1,92 +1,85 @@
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:audio_session/audio_session.dart';
 
 import '../data/repositories/audio_api.dart';
 import '../data/models/surah.dart';
 
-/// Singleton that manages audio playback for surah recitations.
+/// Singleton that manages audio playback for surah recitations using gapless playlists.
 class AudioController with ChangeNotifier {
   AudioController._() {
+    _initAudioSession();
     _player.playerStateStream.listen((_) => notifyListeners());
+    _player.currentIndexStream.listen((_) => notifyListeners());
   }
+
   static final AudioController instance = AudioController._();
 
   final _player = AudioPlayer();
   final _api = const AudioApi();
+  int _selectedReciterId = 1; // Default to Mishary Rashid Al Afasy
+  ConcatenatingAudioSource? _playlist;
+  List<Surah> _queuedSurahs = [];
 
-  Surah? _currentSurah;
-  Surah? get currentSurah => _currentSurah;
+  List<Surah> get queuedSurahs => _queuedSurahs;
+  Surah? get currentSurah => _player.currentIndex != null && _player.currentIndex! < _queuedSurahs.length ? _queuedSurahs[_player.currentIndex!] : null;
+  int get selectedReciterId => _selectedReciterId;
+  String get selectedReciterName => AudioApi.availableReciters[_selectedReciterId] ?? 'Unknown';
 
   bool get isPlaying => _player.playing;
-
-  Stream<Duration> get positionStream => _player.positionStream;
-
   bool get isLoading => _player.processingState == ProcessingState.loading || _player.processingState == ProcessingState.buffering;
 
-  bool _downloading = false;
-  double _progress = 0.0;
+  Stream<Duration> get positionStream => _player.positionStream;
+  int? get currentIndex => _player.currentIndex;
 
-  bool get isDownloading => _downloading;
-  double get downloadProgress => _progress;
-
-  bool get isBusy => isDownloading || isLoading;
-
-  Future<String> _getCachedPath(int surahNumber) async {
-    final dir = await getTemporaryDirectory();
-    final cacheDir = Directory('${dir.path}/audio_cache');
-    if (!await cacheDir.exists()) {
-      await cacheDir.create(recursive: true);
-    }
-    return '${cacheDir.path}/$surahNumber.mp3';
-  }
-
-  Future<String> _downloadIfNeeded(int surahNumber, String url) async {
-    final filePath = await _getCachedPath(surahNumber);
-    final file = File(filePath);
-    if (await file.exists()) return filePath;
-
-    _downloading = true;
-    _progress = 0;
-    notifyListeners();
-
-    final request = await http.Client().send(http.Request('GET', Uri.parse(url)));
-    final total = request.contentLength ?? 0;
-    List<int> bytes = [];
-    int received = 0;
-    await for (final chunk in request.stream) {
-      bytes.addAll(chunk);
-      received += chunk.length;
-      if (total > 0) {
-        _progress = received / total;
-        notifyListeners();
-      }
-    }
-    await file.writeAsBytes(bytes);
-
-    _downloading = false;
-    _progress = 0;
-    notifyListeners();
-
-    return filePath;
-  }
-
+  /// Plays a single surah (clears queue and starts fresh)
   Future<void> playSurah(Surah surah) async {
-    if (_currentSurah?.number == surah.number && _player.playing) {
-      await _player.pause();
-      notifyListeners();
+    await _createPlaylistWithSurah(surah);
+    await _player.play();
+  }
+
+  /// Adds a surah to the current queue
+  Future<void> addToQueue(Surah surah) async {
+    if (_playlist == null) {
+      await playSurah(surah);
       return;
     }
-    _currentSurah = surah;
+
+    final url = await _api.fetchSurahAudio(surah.number, reciterId: _selectedReciterId);
+    await _playlist!.add(AudioSource.uri(Uri.parse(url)));
+    _queuedSurahs.add(surah);
+    notifyListeners();
+  }
+
+  /// Plays multiple surahs as a gapless playlist
+  Future<void> playPlaylist(List<Surah> surahs) async {
+    if (surahs.isEmpty) return;
+
+    _queuedSurahs = List.from(surahs);
     notifyListeners();
 
-    final url = await _api.fetchSurahAudio(surah.number);
-    final localPath = await _downloadIfNeeded(surah.number, url);
-    await _player.setUrl(Uri.file(localPath).toString());
+    // Fetch all URLs and create playlist
+    final sources = <AudioSource>[];
+    for (final surah in surahs) {
+      final url = await _api.fetchSurahAudio(surah.number, reciterId: _selectedReciterId);
+      sources.add(AudioSource.uri(Uri.parse(url)));
+    }
+
+    _playlist = ConcatenatingAudioSource(useLazyPreparation: false, shuffleOrder: DefaultShuffleOrder(), children: sources);
+
+    await _player.setAudioSource(_playlist!);
     await _player.play();
+  }
+
+  /// Creates a new playlist with just one surah
+  Future<void> _createPlaylistWithSurah(Surah surah) async {
+    _queuedSurahs = [surah];
     notifyListeners();
+
+    final url = await _api.fetchSurahAudio(surah.number, reciterId: _selectedReciterId);
+    _playlist = ConcatenatingAudioSource(useLazyPreparation: false, children: [AudioSource.uri(Uri.parse(url))]);
+
+    await _player.setAudioSource(_playlist!);
   }
 
   Future<void> toggle() async {
@@ -98,7 +91,41 @@ class AudioController with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> seekToNext() async {
+    if (_player.hasNext) {
+      await _player.seekToNext();
+    }
+  }
+
+  Future<void> seekToPrevious() async {
+    if (_player.hasPrevious) {
+      await _player.seekToPrevious();
+    }
+  }
+
+  Future<void> seekToIndex(int index) async {
+    await _player.seek(Duration.zero, index: index);
+  }
+
   void disposeController() {
     _player.dispose();
+  }
+
+  /// Changes the reciter for future playback
+  void setReciter(int reciterId) {
+    if (AudioApi.availableReciters.containsKey(reciterId)) {
+      _selectedReciterId = reciterId;
+      notifyListeners();
+    }
+  }
+
+  /// Initialize audio session for consistent playback
+  Future<void> _initAudioSession() async {
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
+
+    // Set audio player to handle sample rate differences gracefully
+    await _player.setVolume(1.0);
+    await _player.setSpeed(1.0);
   }
 }
