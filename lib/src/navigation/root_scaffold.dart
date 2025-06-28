@@ -17,9 +17,8 @@ class _RootScaffoldState extends State<RootScaffold> {
   // Screens associated with each tab.
   static final _screens = [
     const HomeScreen(),
-    SurahListScreen(), // actual Qur'an explore screen
-    const LibraryScreen(),
-    const SettingsScreen(),
+    SurahListScreen(), // Surah Select screen
+    const SettingsScreen(), // Reciters screen
   ];
 
   void _onTabSelected(int index) => setState(() => _currentIndex = index);
@@ -58,7 +57,7 @@ class _RootScaffoldState extends State<RootScaffold> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(currentIndex: _currentIndex, type: BottomNavigationBarType.fixed, onTap: _onTabSelected, items: const [BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'), BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'), BottomNavigationBarItem(icon: Icon(Icons.library_music), label: 'Library'), BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings')]),
+      bottomNavigationBar: BottomNavigationBar(currentIndex: _currentIndex, type: BottomNavigationBarType.fixed, onTap: _onTabSelected, items: const [BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'), BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Surah Select'), BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Reciters')]),
     );
   }
 }

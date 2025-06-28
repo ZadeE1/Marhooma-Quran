@@ -4,6 +4,8 @@ import 'package:audio_session/audio_session.dart';
 
 import '../data/repositories/audio_api.dart';
 import '../data/models/surah.dart';
+import '../data/models/ayah.dart';
+import '../data/repositories/quran_api.dart';
 
 /// Singleton that manages audio playback for surah recitations using gapless playlists.
 class AudioController with ChangeNotifier {
@@ -20,9 +22,23 @@ class AudioController with ChangeNotifier {
   int _selectedReciterId = 1; // Default to Mishary Rashid Al Afasy
   ConcatenatingAudioSource? _playlist;
   List<Surah> _queuedSurahs = [];
+  List<Ayah> _queuedAyahs = []; // Flat list of ayahs matching the playlist order
 
   List<Surah> get queuedSurahs => _queuedSurahs;
-  Surah? get currentSurah => _player.currentIndex != null && _player.currentIndex! < _queuedSurahs.length ? _queuedSurahs[_player.currentIndex!] : null;
+  Surah? get currentSurah {
+    if (_player.currentIndex == null) return null;
+    var index = _player.currentIndex!;
+    var offset = 0;
+    for (final surah in _queuedSurahs) {
+      final ayahCount = surah.ayahs.length;
+      if (index < offset + ayahCount) {
+        return surah;
+      }
+      offset += ayahCount;
+    }
+    return null;
+  }
+
   int get selectedReciterId => _selectedReciterId;
   String get selectedReciterName => AudioApi.availableReciters[_selectedReciterId] ?? 'Unknown';
 
@@ -32,9 +48,12 @@ class AudioController with ChangeNotifier {
   Stream<Duration> get positionStream => _player.positionStream;
   int? get currentIndex => _player.currentIndex;
 
-  /// Plays a single surah (clears queue and starts fresh)
+  Ayah? get currentAyah => _player.currentIndex != null && _player.currentIndex! < _queuedAyahs.length ? _queuedAyahs[_player.currentIndex!] : null;
+
+  /// Plays a single surah (clears queue and starts fresh). Each ayah becomes its own
+  /// track so we can keep accurate verse indices.
   Future<void> playSurah(Surah surah) async {
-    await _createPlaylistWithSurah(surah);
+    await _createPlaylistForSurah(surah);
     await _player.play();
   }
 
@@ -45,41 +64,69 @@ class AudioController with ChangeNotifier {
       return;
     }
 
-    final url = await _api.fetchSurahAudio(surah.number, reciterId: _selectedReciterId);
-    await _playlist!.add(AudioSource.uri(Uri.parse(url)));
-    _queuedSurahs.add(surah);
+    final fullSurah = await _ensureAyahsLoaded(surah);
+    _queuedSurahs.add(fullSurah);
+
+    for (final ayah in fullSurah.ayahs) {
+      _queuedAyahs.add(ayah);
+      final url = AudioApi.buildAyahUrl(_selectedReciterId, fullSurah.number, ayah.numberInSurah);
+      await _playlist!.add(AudioSource.uri(Uri.parse(url)));
+    }
+
     notifyListeners();
   }
 
-  /// Plays multiple surahs as a gapless playlist
+  /// Plays multiple surahs as a gapless playlist (verse-by-verse)
   Future<void> playPlaylist(List<Surah> surahs) async {
     if (surahs.isEmpty) return;
 
-    _queuedSurahs = List.from(surahs);
-    notifyListeners();
+    _queuedSurahs = [];
+    _queuedAyahs = [];
+    final children = <AudioSource>[];
 
-    // Fetch all URLs and create playlist
-    final sources = <AudioSource>[];
     for (final surah in surahs) {
-      final url = await _api.fetchSurahAudio(surah.number, reciterId: _selectedReciterId);
-      sources.add(AudioSource.uri(Uri.parse(url)));
+      final fullSurah = await _ensureAyahsLoaded(surah);
+      _queuedSurahs.add(fullSurah);
+      for (final ayah in fullSurah.ayahs) {
+        _queuedAyahs.add(ayah);
+        final url = AudioApi.buildAyahUrl(_selectedReciterId, fullSurah.number, ayah.numberInSurah);
+        children.add(AudioSource.uri(Uri.parse(url)));
+      }
     }
 
-    _playlist = ConcatenatingAudioSource(useLazyPreparation: false, shuffleOrder: DefaultShuffleOrder(), children: sources);
+    _playlist = ConcatenatingAudioSource(useLazyPreparation: false, shuffleOrder: DefaultShuffleOrder(), children: children);
 
     await _player.setAudioSource(_playlist!);
+    notifyListeners();
     await _player.play();
   }
 
-  /// Creates a new playlist with just one surah
-  Future<void> _createPlaylistWithSurah(Surah surah) async {
-    _queuedSurahs = [surah];
-    notifyListeners();
+  /// Creates a new playlist for a single surah (verse-by-verse)
+  Future<void> _createPlaylistForSurah(Surah surah) async {
+    final fullSurah = await _ensureAyahsLoaded(surah);
 
-    final url = await _api.fetchSurahAudio(surah.number, reciterId: _selectedReciterId);
-    _playlist = ConcatenatingAudioSource(useLazyPreparation: false, children: [AudioSource.uri(Uri.parse(url))]);
+    _queuedSurahs = [fullSurah];
+    _queuedAyahs = [];
+
+    final children = <AudioSource>[];
+    for (final ayah in fullSurah.ayahs) {
+      _queuedAyahs.add(ayah);
+      final url = AudioApi.buildAyahUrl(_selectedReciterId, fullSurah.number, ayah.numberInSurah);
+      children.add(AudioSource.uri(Uri.parse(url)));
+    }
+
+    _playlist = ConcatenatingAudioSource(useLazyPreparation: false, children: children);
 
     await _player.setAudioSource(_playlist!);
+    notifyListeners();
+  }
+
+  /// Ensures we have ayah data for a surah (fetches from API if missing)
+  Future<Surah> _ensureAyahsLoaded(Surah surah) async {
+    if (surah.ayahs.isNotEmpty) return surah;
+    final api = const QuranApi();
+    final ayahs = await api.fetchAyahs(surah.number);
+    return surah.copyWithAyahs(ayahs);
   }
 
   Future<void> toggle() async {

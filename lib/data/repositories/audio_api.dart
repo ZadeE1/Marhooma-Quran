@@ -27,4 +27,11 @@ class AudioApi {
 
   /// Returns available reciters with their IDs and names
   static const Map<int, String> availableReciters = {1: 'Mishary Rashid Al Afasy', 2: 'Abu Bakr Al Shatri', 3: 'Nasser Al Qatami', 4: 'Yasser Al Dosari', 5: 'Hani Ar Rifai'};
+
+  /// Builds the direct URL to a specific ayah audio file based on the pattern
+  /// `/<reciterId>/<surahNo>_<ayahNo>.mp3` hosted on the-quran-project GitHub pages.
+  /// Example: `https://the-quran-project.github.io/Quran-Audio/Data/2/1_2.mp3`
+  static String buildAyahUrl(int reciterId, int surahNumber, int ayahNumber) {
+    return 'https://the-quran-project.github.io/Quran-Audio/Data/$reciterId/${surahNumber}_${ayahNumber}.mp3';
+  }
 }

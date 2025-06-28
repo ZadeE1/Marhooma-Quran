@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/surah.dart';
 import '../../../data/repositories/quran_api.dart';
-import 'surah_detail_screen.dart';
 import '../../../audio/audio_controller.dart';
 
 /// Lists all 114 surahs for the chosen translation.
@@ -38,28 +37,45 @@ class SurahListScreen extends StatelessWidget {
   }
 
   Widget _buildSurahList(List<Surah> surahs) {
-    return ListView.separated(
-      itemCount: surahs.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final surah = surahs[index];
-        return ListTile(
-          title: Text('${surah.number}. ${surah.englishName}'),
-          subtitle: Text(surah.arabicName, style: const TextStyle(fontFamily: 'ScheherazadeNew')),
-          trailing: PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'play':
-                  AudioController.instance.playSurah(surah);
-                  break;
-                case 'queue':
-                  AudioController.instance.addToQueue(surah);
-                  break;
-              }
-            },
-            itemBuilder: (context) => [const PopupMenuItem(value: 'play', child: Text('Play Now')), const PopupMenuItem(value: 'queue', child: Text('Add to Queue'))],
-          ),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SurahDetailScreen(surahMeta: surah))),
+    return AnimatedBuilder(
+      animation: AudioController.instance,
+      builder: (context, _) {
+        final controller = AudioController.instance;
+        final currentSurah = controller.currentSurah;
+
+        return ListView.separated(
+          itemCount: surahs.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final surah = surahs[index];
+            final isCurrentlyPlaying = currentSurah?.number == surah.number;
+
+            return ListTile(
+              // Visual feedback for currently playing surah
+              leading: isCurrentlyPlaying ? Icon(controller.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, color: Colors.green, size: 32) : CircleAvatar(backgroundColor: Colors.grey.shade700, radius: 16, child: Text(surah.number.toString(), style: const TextStyle(color: Colors.white, fontSize: 12))),
+              title: Text('${surah.englishName}', style: TextStyle(color: isCurrentlyPlaying ? Colors.green : null, fontWeight: isCurrentlyPlaying ? FontWeight.bold : null)),
+              subtitle: Text(surah.arabicName, style: TextStyle(fontFamily: 'ScheherazadeNew', color: isCurrentlyPlaying ? Colors.green.shade300 : null)),
+              trailing: PopupMenuButton<String>(
+                onSelected: (value) {
+                  switch (value) {
+                    case 'queue':
+                      AudioController.instance.addToQueue(surah);
+                      // Show a snackbar to confirm the action
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${surah.englishName} added to queue'), duration: const Duration(seconds: 2)));
+                      break;
+                  }
+                },
+                itemBuilder:
+                    (context) => [
+                      const PopupMenuItem(value: 'queue', child: Row(children: [Icon(Icons.queue_music), SizedBox(width: 8), Text('Add to Queue')])),
+                    ],
+              ),
+              // Main tap action: Play the surah
+              onTap: () {
+                AudioController.instance.playSurah(surah);
+              },
+            );
+          },
         );
       },
     );
