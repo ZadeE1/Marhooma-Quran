@@ -137,20 +137,51 @@ class AudioController with ChangeNotifier {
     // IOSink handles back-pressure ensuring writes are ordered.
     final sink = file.openWrite(mode: FileMode.writeOnlyAppend);
 
+    bool isFirstAyah = true;
     for (final ayah in surah.ayahs) {
       final url = AudioApi.buildAyahUrl(_selectedReciterId, surah.number, ayah.numberInSurah);
       final dl = await DownloaderStream.start(url);
 
+      // State to skip initial ID3v2 tag (present at the start of most MP3s).
+      int skipRemaining = isFirstAyah ? 0 : -1; // -1 indicates we haven't checked yet
+
       _pipeSub = dl.stream.listen((chunk) {
-        sink.add(chunk);
-        bytesWritten += chunk.length;
-        if (!started && bytesWritten > 100 * 1024) {
-          started = true;
-          _player.open(Media('appending://${file.path}'));
-          _player.play();
+        int offset = 0;
+
+        // Determine how many bytes (if any) to skip at the very beginning of this file.
+        if (skipRemaining != 0) {
+          if (skipRemaining == -1) {
+            // First chunk for this ayah — inspect for ID3 tag.
+            if (chunk.length >= 10 && chunk[0] == 0x49 /* I */ && chunk[1] == 0x44 /* D */ && chunk[2] == 0x33 /* 3 */ ) {
+              // Size is stored as 4 sync-safe bytes.
+              final size = ((chunk[6] & 0x7F) << 21) | ((chunk[7] & 0x7F) << 14) | ((chunk[8] & 0x7F) << 7) | (chunk[9] & 0x7F);
+              skipRemaining = size + 10; // tag header (10) + payload
+            } else {
+              skipRemaining = 0; // no tag
+            }
+          }
+
+          // Skip bytes if needed
+          if (skipRemaining > 0) {
+            final consume = skipRemaining < (chunk.length - offset) ? skipRemaining : (chunk.length - offset);
+            offset += consume;
+            skipRemaining -= consume;
+          }
+        }
+
+        if (offset < chunk.length) {
+          final data = chunk.sublist(offset);
+          sink.add(data);
+          bytesWritten += data.length;
+          if (!started && bytesWritten > 100 * 1024) {
+            started = true;
+            _player.open(Media('appending://${file.path}'));
+            _player.play();
+          }
         }
       });
       await _pipeSub!.asFuture();
+      isFirstAyah = false;
     }
 
     await sink.flush();
