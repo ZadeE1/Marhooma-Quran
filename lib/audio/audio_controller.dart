@@ -146,7 +146,7 @@ class AudioController with ChangeNotifier {
         bytesWritten += chunk.length;
         if (!started && bytesWritten > 100 * 1024) {
           started = true;
-          _player.open(Media(file.path));
+          _player.open(Media('appending://${file.path}'));
           _player.play();
         }
       });
