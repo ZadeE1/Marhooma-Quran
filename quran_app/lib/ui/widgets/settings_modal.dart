@@ -62,72 +62,74 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
             if (_selectedReciter != null && _selectedSurah != null) TextButton(onPressed: _handleSelectionComplete, child: const Text('Done')),
           ],
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            // Reciters Tab
-            FutureBuilder<List<Reciter>>(
-              future: _apiService.getReciterList(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(top: AppTheme.spaceS),
-                    itemCount: snapshot.data!.length,
-                    itemBuilder: (context, index) {
-                      final reciter = snapshot.data![index];
-                      return ReciterTile(
-                        reciter: reciter,
-                        selected: _selectedReciter?.id == reciter.id,
-                        onTap: () {
-                          setState(() {
-                            _selectedReciter = reciter;
-                          });
-                          // Auto-switch to surah tab if no surah selected yet
-                          if (_selectedSurah == null) {
-                            _tabController.animateTo(1);
-                          }
-                        },
-                      );
-                    },
-                  );
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error loading reciters: ${snapshot.error}'));
-                }
-                return const Center(child: CircularProgressIndicator());
-              },
-            ),
-            // Surahs Tab
-            FutureBuilder<List<Surah>>(
-              future: _apiService.getSurahList(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(top: AppTheme.spaceS),
-                    itemCount: snapshot.data!.length,
-                    itemBuilder: (context, index) {
-                      final surah = snapshot.data![index];
-                      return SurahTile(
-                        surah: surah,
-                        selected: _selectedSurah?.number == surah.number,
-                        onTap: () {
-                          setState(() {
-                            _selectedSurah = surah;
-                          });
-                          // Auto-complete if both selections are made
-                          if (_selectedReciter != null) {
-                            _handleSelectionComplete();
-                          }
-                        },
-                      );
-                    },
-                  );
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error loading surahs: ${snapshot.error}'));
-                }
-                return const Center(child: CircularProgressIndicator());
-              },
-            ),
-          ],
+        body: SafeArea(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // Reciters Tab
+              FutureBuilder<List<Reciter>>(
+                future: _apiService.getReciterList(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(top: AppTheme.spaceS),
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        final reciter = snapshot.data![index];
+                        return ReciterTile(
+                          reciter: reciter,
+                          selected: _selectedReciter?.id == reciter.id,
+                          onTap: () {
+                            setState(() {
+                              _selectedReciter = reciter;
+                            });
+                            // Auto-switch to surah tab if no surah selected yet
+                            if (_selectedSurah == null) {
+                              _tabController.animateTo(1);
+                            }
+                          },
+                        );
+                      },
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error loading reciters: ${snapshot.error}'));
+                  }
+                  return const Center(child: CircularProgressIndicator());
+                },
+              ),
+              // Surahs Tab
+              FutureBuilder<List<Surah>>(
+                future: _apiService.getSurahList(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(top: AppTheme.spaceS),
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        final surah = snapshot.data![index];
+                        return SurahTile(
+                          surah: surah,
+                          selected: _selectedSurah?.number == surah.number,
+                          onTap: () {
+                            setState(() {
+                              _selectedSurah = surah;
+                            });
+                            // Auto-complete if both selections are made
+                            if (_selectedReciter != null) {
+                              _handleSelectionComplete();
+                            }
+                          },
+                        );
+                      },
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error loading surahs: ${snapshot.error}'));
+                  }
+                  return const Center(child: CircularProgressIndicator());
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
