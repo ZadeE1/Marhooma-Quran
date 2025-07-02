@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
-import 'ui/screens/home_screen.dart';
+import 'ui/screens/special_display_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,6 +11,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'Quran App', theme: AppTheme.lightTheme, darkTheme: AppTheme.darkTheme, home: const HomeScreen());
+    return MaterialApp(title: 'Quran App', theme: AppTheme.lightTheme, darkTheme: AppTheme.darkTheme, home: const SpecialDisplayScreen());
   }
 }

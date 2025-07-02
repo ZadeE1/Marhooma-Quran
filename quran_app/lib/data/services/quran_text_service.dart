@@ -24,7 +24,14 @@ class QuranTextService {
         numberInSurah: verseNumber,
         juz: 0,
         page: 0,
+        englishTranslation: quran.getVerseTranslation(surahNumber, verseNumber, translation: quran.Translation.enSaheeh),
       );
     });
+  }
+
+  /// Returns a single [Ayah] for the given [surahNumber] and [verseNumber].
+  /// This is useful for getting specific verses during audio playback.
+  Future<Ayah> getAyah(int surahNumber, int verseNumber) async {
+    return Ayah(number: verseNumber, text: quran.getVerse(surahNumber, verseNumber, verseEndSymbol: true), numberInSurah: verseNumber, juz: 0, page: 0, englishTranslation: quran.getVerseTranslation(surahNumber, verseNumber, translation: quran.Translation.enSaheeh));
   }
 }
