@@ -1,1 +1,1 @@
-scrcpy --no-audio --stay-awake --window-height=1500 --window-x=100 --video-buffer=5 --audio-buffer=100 --max-size=1500 --video-bit-rate=2M --max-fps=900 --print-fps --video-codec=h265
+scrcpy --no-audio --stay-awake --window-height=1500 --window-x=100 --video-buffer=5 --audio-buffer=100 --max-size=1500 --video-bit-rate=2M --max-fps=900 --print-fps --video-codec=h265 --no-cleanup --force-adb-forward

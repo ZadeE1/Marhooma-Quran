@@ -31,19 +31,22 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   // Current state
   Reciter? _selectedReciter;
   Surah? _selectedSurah;
-  Ayah? _currentAyah;
+  Ayah? _currentDisplayAyah; // What's currently visible on screen
+  Ayah? _nextDisplayAyah; // What will be shown next (pre-loaded)
+  int? _lastAyahNumber; // Track the last ayah number we processed
   bool _isPlaying = false;
+  bool _showingNextAyah = false; // Toggle between current and next display
 
   // Focus mode state and timer
   bool _isInFocusMode = false;
   Timer? _inactivityTimer;
   static const Duration _inactivityDuration = Duration(seconds: 10);
 
-  // Animation controller for focus mode transitions
-  late AnimationController _focusModeAnimationController;
-  late Animation<double> _appBarSlideAnimation;
-  late Animation<double> _bottomNavSlideAnimation;
-  late Animation<double> _contentFadeAnimation;
+  // Efficient animation controllers for focus mode transitions
+  late AnimationController _appBarAnimationController;
+  late AnimationController _bottomNavAnimationController;
+  late Animation<Offset> _appBarSlideAnimation;
+  late Animation<Offset> _bottomNavSlideAnimation;
 
   @override
   void initState() {
@@ -52,18 +55,24 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     _setupAudioListeners();
   }
 
-  /// Initializes animation controllers and animations for smooth transitions.
+  /// Initializes efficient animation controllers for smooth, fast transitions.
   void _initializeAnimations() {
-    _focusModeAnimationController = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this);
+    // Separate controllers for better performance and resource management
+    _appBarAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300), // Quick, smooth animation
+      vsync: this,
+    );
+
+    _bottomNavAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300), // Quick, smooth animation
+      vsync: this,
+    );
 
     // App bar slides up and out
-    _appBarSlideAnimation = Tween<double>(begin: 0.0, end: -1.0).animate(CurvedAnimation(parent: _focusModeAnimationController, curve: const Interval(0.0, 0.6, curve: Curves.easeInOut)));
+    _appBarSlideAnimation = Tween<Offset>(begin: const Offset(0, 0), end: const Offset(0, -1)).animate(CurvedAnimation(parent: _appBarAnimationController, curve: Curves.easeInOut));
 
     // Bottom navigation slides down and out
-    _bottomNavSlideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _focusModeAnimationController, curve: const Interval(0.0, 0.6, curve: Curves.easeInOut)));
-
-    // Content transitions to focus mode
-    _contentFadeAnimation = CurvedAnimation(parent: _focusModeAnimationController, curve: const Interval(0.3, 1.0, curve: Curves.easeInOut));
+    _bottomNavSlideAnimation = Tween<Offset>(begin: const Offset(0, 0), end: const Offset(0, 1)).animate(CurvedAnimation(parent: _bottomNavAnimationController, curve: Curves.easeInOut));
   }
 
   /// Starts or restarts the inactivity timer for focus mode.
@@ -71,7 +80,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   void _startInactivityTimer() {
     _inactivityTimer?.cancel();
     _inactivityTimer = Timer(_inactivityDuration, () {
-      if (mounted && _currentAyah != null) {
+      if (mounted && _currentDisplayAyah != null) {
         _enterFocusMode();
       }
     });
@@ -82,12 +91,14 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     setState(() {
       _isInFocusMode = true;
     });
-    _focusModeAnimationController.forward();
+    _appBarAnimationController.forward();
+    _bottomNavAnimationController.forward();
   }
 
   /// Smoothly exits focus mode with fade animation.
   void _exitFocusModeWithAnimation() {
-    _focusModeAnimationController.reverse().then((_) {
+    // Use Future.wait to ensure both animations complete before updating state
+    Future.wait([_appBarAnimationController.reverse(), _bottomNavAnimationController.reverse()]).then((_) {
       if (mounted) {
         setState(() {
           _isInFocusMode = false;
@@ -116,18 +127,65 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     // Listen for current ayah changes
     _audioService.currentAyahStream.listen((ayahNumber) async {
       if (ayahNumber != null && _selectedSurah != null) {
-        // Fetch the current ayah with translation
-        final ayah = await _textService.getAyah(_selectedSurah!.number, ayahNumber);
-        setState(() {
-          _currentAyah = ayah;
-        });
+        // Check if this is actually a new ayah (avoid duplicate processing)
+        if (_lastAyahNumber == ayahNumber) {
+          return; // Skip if same ayah
+        }
+
+        // Load the new ayah content
+        final newAyah = await _textService.getAyah(_selectedSurah!.number, ayahNumber);
+
+        // If this is the first ayah, show it immediately
+        if (_currentDisplayAyah == null) {
+          setState(() {
+            _currentDisplayAyah = newAyah;
+            _nextDisplayAyah = null;
+            _lastAyahNumber = ayahNumber;
+            _showingNextAyah = false;
+          });
+
+          if (ayahNumber == 1) {
+            _startInactivityTimer();
+          }
+          return;
+        }
+
+        // We have existing content, so perform smooth transition
+        if (_showingNextAyah) {
+          // Currently showing next display, so load new content into current display
+          setState(() {
+            _currentDisplayAyah = newAyah;
+            _lastAyahNumber = ayahNumber;
+          });
+          // Small delay then cross-fade to current display
+          await Future.delayed(const Duration(milliseconds: 50));
+          setState(() {
+            _showingNextAyah = false; // Cross-fade to current display
+          });
+        } else {
+          // Currently showing current display, so load new content into next display
+          setState(() {
+            _nextDisplayAyah = newAyah;
+            _lastAyahNumber = ayahNumber;
+          });
+          // Small delay then cross-fade to next display
+          await Future.delayed(const Duration(milliseconds: 50));
+          setState(() {
+            _showingNextAyah = true; // Cross-fade to next display
+          });
+        }
+
         // Start timer only if this is the first verse (user just started playback)
         if (ayahNumber == 1) {
           _startInactivityTimer();
         }
       } else {
+        // Clear everything when no content
         setState(() {
-          _currentAyah = null;
+          _currentDisplayAyah = null;
+          _nextDisplayAyah = null;
+          _lastAyahNumber = null;
+          _showingNextAyah = false;
         });
       }
     });
@@ -169,69 +227,100 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   @override
   void dispose() {
     _inactivityTimer?.cancel();
-    _focusModeAnimationController.dispose();
+    _appBarAnimationController.dispose();
+    _bottomNavAnimationController.dispose();
     _audioService.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _focusModeAnimationController,
-      builder: (context, child) {
-        return GestureDetector(
-          onTap: _onUserInteraction,
-          onPanDown: (_) => _onUserInteraction(),
-          behavior: HitTestBehavior.opaque,
-          child: Scaffold(
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            // App bar that slides up and out during focus mode
-            appBar: _isInFocusMode ? null : PreferredSize(preferredSize: const Size.fromHeight(kToolbarHeight), child: SlideTransition(position: Tween<Offset>(begin: const Offset(0, 0), end: const Offset(0, -1)).animate(_appBarSlideAnimation), child: AppBar(title: const Text('Quran'), centerTitle: true, actions: [IconButton(icon: const Icon(Icons.settings), onPressed: _showSettingsModal, tooltip: 'Select Reciter & Surah')]))),
-            body: SafeArea(child: FadeTransition(opacity: _isInFocusMode ? _contentFadeAnimation : Tween<double>(begin: 1.0, end: 0.0).animate(_contentFadeAnimation), child: CurrentVerseDisplay(currentAyah: _currentAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode))),
-            // Bottom navigation that slides down and out during focus mode
-            bottomNavigationBar:
-                _currentAyah != null && _selectedSurah != null && !_isInFocusMode
-                    ? SlideTransition(
-                      position: Tween<Offset>(begin: const Offset(0, 0), end: const Offset(0, 1)).animate(_bottomNavSlideAnimation),
-                      child: SafeArea(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)))),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              // Stop button
-                              IconButton(
-                                icon: const Icon(Icons.stop),
-                                iconSize: 32,
-                                onPressed: () async {
-                                  _onUserInteraction();
-                                  await _audioService.stop();
-                                },
-                              ),
-                              // Play/Pause button
-                              IconButton(
-                                icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
-                                onPressed: () async {
-                                  _onUserInteraction();
-                                  if (_isPlaying) {
-                                    await _audioService.pause();
-                                  } else {
-                                    await _audioService.play();
-                                  }
-                                },
-                              ),
-                              // Settings button
-                              IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                    : null,
+    return GestureDetector(
+      onTap: _onUserInteraction,
+      onPanDown: (_) => _onUserInteraction(),
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        // App bar that slides up and out during focus mode - always present but animated
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: SlideTransition(
+            position: _appBarSlideAnimation,
+            child: AppBar(
+              title: const Text('Quran'),
+              centerTitle: true,
+              actions: [
+                // Debug button to manually toggle focus mode
+                IconButton(
+                  icon: Icon(_isInFocusMode ? Icons.fullscreen_exit : Icons.fullscreen),
+                  onPressed: () {
+                    _onUserInteraction();
+                    if (_isInFocusMode) {
+                      _exitFocusModeWithAnimation();
+                    } else {
+                      _enterFocusMode();
+                    }
+                  },
+                  tooltip: _isInFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode',
+                ),
+                IconButton(icon: const Icon(Icons.settings), onPressed: _showSettingsModal, tooltip: 'Select Reciter & Surah'),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+        // Body content with smooth ayah cross-fade transitions using Stack
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Display A: Shows current or next ayah based on toggle
+              AnimatedOpacity(opacity: _showingNextAyah ? 0.0 : 1.0, duration: const Duration(milliseconds: 400), child: CurrentVerseDisplay(currentAyah: _currentDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode)),
+              // Display B: Shows the alternate content for smooth transitions
+              AnimatedOpacity(opacity: _showingNextAyah ? 1.0 : 0.0, duration: const Duration(milliseconds: 400), child: CurrentVerseDisplay(currentAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode)),
+            ],
+          ),
+        ),
+        // Bottom navigation - always present but slides down during focus mode
+        bottomNavigationBar:
+            _currentDisplayAyah != null && _selectedSurah != null
+                ? SlideTransition(
+                  position: _bottomNavSlideAnimation,
+                  child: SafeArea(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Stop button
+                          IconButton(
+                            icon: const Icon(Icons.stop),
+                            iconSize: 32,
+                            onPressed: () async {
+                              _onUserInteraction();
+                              await _audioService.stop();
+                            },
+                          ),
+                          // Play/Pause button
+                          IconButton(
+                            icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
+                            onPressed: () async {
+                              _onUserInteraction();
+                              if (_isPlaying) {
+                                await _audioService.pause();
+                              } else {
+                                await _audioService.play();
+                              }
+                            },
+                          ),
+                          // Settings button
+                          IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                : null, // Only null when no content is available, not based on focus mode
+      ),
     );
   }
 }
