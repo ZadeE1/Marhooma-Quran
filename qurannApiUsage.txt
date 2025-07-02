@@ -1,0 +1,1 @@
+https://everyayah.com/data/{fetched from the quran api reference as subfolder}/{ surah number but must maintain 3 numeral spaces, 001 002 003 etc}{ ayah number but must maintain 3 numeral spaces, 001 002 003 etc}.mp3
