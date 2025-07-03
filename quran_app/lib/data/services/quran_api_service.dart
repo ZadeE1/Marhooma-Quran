@@ -4,9 +4,26 @@ import '../models/reciter.dart';
 import '../models/surah.dart';
 
 class QuranApiService {
+  // Singleton instance
+  static final QuranApiService _instance = QuranApiService._internal();
+
+  // Private constructor
+  QuranApiService._internal();
+
+  // Factory constructor to return the singleton instance
+  factory QuranApiService() {
+    return _instance;
+  }
+
+  // Cached data
+  Map<String, dynamic>? _quranData;
+
   Future<Map<String, dynamic>> _loadQuranData() async {
-    final String jsonString = await rootBundle.loadString('assets/data/quranApiRef.json');
-    return json.decode(jsonString);
+    if (_quranData == null) {
+      final String jsonString = await rootBundle.loadString('assets/data/quranApiRef.json');
+      _quranData = json.decode(jsonString);
+    }
+    return _quranData!;
   }
 
   Future<List<Surah>> getSurahList() async {

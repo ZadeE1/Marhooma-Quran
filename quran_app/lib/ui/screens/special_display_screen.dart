@@ -285,7 +285,21 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   /// Shows the settings modal for reciter and surah selection.
   void _showSettingsModal() {
     _onUserInteraction(); // This is a user interaction
-    showDialog(context: context, builder: (context) => SettingsModal(selectedReciter: _selectedReciter, selectedSurah: _selectedSurah, onSelectionComplete: _onSelectionComplete));
+    showDialog(
+      context: context,
+      builder:
+          (context) => SettingsModal(
+            selectedReciter: _selectedReciter,
+            selectedSurah: _selectedSurah,
+            onSelectionComplete: _onSelectionComplete,
+            animationStyle: _transitionStyle,
+            onAnimationStyleChanged: (style) {
+              setState(() {
+                _transitionStyle = style;
+              });
+            },
+          ),
+    );
   }
 
   /// Loads and caches all surahs for navigation purposes
@@ -357,7 +371,6 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                 },
                 tooltip: 'Change Animation Style',
               ),
-              IconButton(icon: const Icon(Icons.settings), onPressed: _showSettingsModal, tooltip: 'Select Reciter & Surah'),
             ],
           ),
         ),
@@ -384,46 +397,47 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
         ),
       ),
       // Bottom navigation - always present but slides down during focus mode
-      bottomNavigationBar:
-          _currentDisplayAyah != null && _selectedSurah != null
-              ? SlideTransition(
-                position: _bottomNavSlideAnimation,
-                child: SafeArea(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)))),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        // Stop button
-                        IconButton(
-                          icon: const Icon(Icons.stop),
-                          iconSize: 32,
-                          onPressed: () async {
+      bottomNavigationBar: SlideTransition(
+        position: _bottomNavSlideAnimation,
+        child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)))),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Stop button - disabled when no content
+                IconButton(
+                  icon: const Icon(Icons.stop),
+                  iconSize: 32,
+                  onPressed:
+                      (_currentDisplayAyah != null && _selectedSurah != null)
+                          ? () async {
                             _onUserInteraction();
                             await _audioService.stop();
-                          },
-                        ),
-                        // Play/Pause button
-                        IconButton(
-                          icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
-                          onPressed: () async {
-                            _onUserInteraction();
-                            if (_isPlaying) {
-                              await _audioService.pause();
-                            } else {
-                              await _audioService.play();
-                            }
-                          },
-                        ),
-                        // Settings button
-                        IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
-                      ],
-                    ),
-                  ),
+                          }
+                          : null, // Disabled when no content
                 ),
-              )
-              : null, // Only null when no content is available, not based on focus mode
+                // Center button - Play/Pause when content available, nothing otherwise
+                if (_currentDisplayAyah != null && _selectedSurah != null)
+                  IconButton(
+                    icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
+                    onPressed: () async {
+                      _onUserInteraction();
+                      if (_isPlaying) {
+                        await _audioService.pause();
+                      } else {
+                        await _audioService.play();
+                      }
+                    },
+                  ),
+                // Settings button - always available
+                IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
