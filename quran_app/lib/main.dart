@@ -11,6 +11,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'Quran App', theme: AppTheme.lightTheme, darkTheme: AppTheme.darkTheme, home: const SpecialDisplayScreen());
+    return MaterialApp(
+      title: 'Quran App',
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      debugShowCheckedModeBanner: false, // Remove debug banner
+      home: const SpecialDisplayScreen(),
+    );
   }
 }

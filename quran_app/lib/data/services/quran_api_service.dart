@@ -17,6 +17,8 @@ class QuranApiService {
 
   // Cached data
   Map<String, dynamic>? _quranData;
+  List<Surah>? _surahListCache;
+  List<Reciter>? _reciterListCache;
 
   Future<Map<String, dynamic>> _loadQuranData() async {
     if (_quranData == null) {
@@ -27,10 +29,12 @@ class QuranApiService {
   }
 
   Future<List<Surah>> getSurahList() async {
+    // Return the cached list if we've already generated it
+    if (_surahListCache != null) return _surahListCache!;
+
     final data = await _loadQuranData();
     final List<dynamic> ayahCounts = data['ayahCount'];
-    // I need a list of Surah names. I will look for one.
-    // For now, I will just use the surah number as the name.
+    // Hard-coded surah names list.
     final List<String> surahNames = [
       "Al-Fatihah",
       "Al-Baqarah",
@@ -148,21 +152,21 @@ class QuranApiService {
       "An-Nas",
     ];
 
-    List<Surah> surahs = [];
-    for (int i = 0; i < ayahCounts.length; i++) {
-      surahs.add(Surah(number: i + 1, name: surahNames.length > i ? surahNames[i] : 'Surah ${i + 1}', ayahCount: ayahCounts[i]));
-    }
-    return surahs;
+    _surahListCache = List.generate(ayahCounts.length, (i) => Surah(number: i + 1, name: surahNames.length > i ? surahNames[i] : 'Surah ${i + 1}', ayahCount: ayahCounts[i]));
+
+    return _surahListCache!;
   }
 
   Future<List<Reciter>> getReciterList() async {
+    if (_reciterListCache != null) return _reciterListCache!;
+
     final data = await _loadQuranData();
-    List<Reciter> reciters = [];
+    _reciterListCache = [];
     data.forEach((key, value) {
       if (int.tryParse(key) != null && value is Map<String, dynamic>) {
-        reciters.add(Reciter.fromJson(int.parse(key), value));
+        _reciterListCache!.add(Reciter.fromJson(int.parse(key), value));
       }
     });
-    return reciters;
+    return _reciterListCache!;
   }
 }

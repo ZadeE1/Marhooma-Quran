@@ -38,49 +38,75 @@ class CurrentVerseDisplay extends StatelessWidget {
       return Container(
         color: colorScheme.surface,
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Arabic text - clean and prominent
-              Container(margin: const EdgeInsets.symmetric(horizontal: 16), child: Text(currentAyah!.text, style: theme.textTheme.headlineLarge?.copyWith(fontSize: 30, height: 1.8, fontWeight: FontWeight.w400, color: colorScheme.onSurface), textAlign: TextAlign.center, textDirection: TextDirection.rtl)),
-              const SizedBox(height: 32),
-              // English translation - clean and readable with better spacing
-              if (currentAyah!.englishTranslation != null) Container(margin: const EdgeInsets.symmetric(horizontal: 24), child: Text(currentAyah!.englishTranslation!, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 17, height: 1.6, color: colorScheme.onSurface.withOpacity(0.85), fontWeight: FontWeight.w400), textAlign: TextAlign.center)),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: IntrinsicHeight(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Arabic text - clean and prominent
+                        Container(constraints: BoxConstraints(maxWidth: constraints.maxWidth - 64), margin: const EdgeInsets.symmetric(horizontal: 16), child: Text(currentAyah!.text, style: theme.textTheme.headlineLarge?.copyWith(fontSize: 30, height: 1.8, fontWeight: FontWeight.w400, color: colorScheme.onSurface), textAlign: TextAlign.center, textDirection: TextDirection.rtl)),
+                        const SizedBox(height: 32),
+                        // English translation - clean and readable with better spacing
+                        if (currentAyah!.englishTranslation != null) Container(constraints: BoxConstraints(maxWidth: constraints.maxWidth - 48), margin: const EdgeInsets.symmetric(horizontal: 24), child: Text(currentAyah!.englishTranslation!, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 17, height: 1.6, color: colorScheme.onSurface.withValues(alpha: 0.85), fontWeight: FontWeight.w400), textAlign: TextAlign.center)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       );
     }
 
     // Normal mode: Full UI with decorative elements
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spaceL),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Surah and verse information
-            Container(padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM, vertical: AppTheme.spaceS), decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)), child: Text('${currentSurah!.name} - Verse ${currentAyah!.numberInSurah}', style: theme.textTheme.titleMedium?.copyWith(color: colorScheme.onPrimaryContainer, fontWeight: FontWeight.w600))),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: IntrinsicWidth(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: constraints.maxWidth, minWidth: constraints.maxWidth * 0.8),
+                  padding: EdgeInsets.all(AppTheme.spaceL),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Surah and verse information
+                      Container(padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM, vertical: AppTheme.spaceS), decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)), child: Text('${currentSurah!.name} - Verse ${currentAyah!.numberInSurah}', style: theme.textTheme.titleMedium?.copyWith(color: colorScheme.onPrimaryContainer, fontWeight: FontWeight.w600))),
 
-            const SizedBox(height: AppTheme.spaceXl),
+                      SizedBox(height: AppTheme.spaceXl),
 
-            // Arabic text - main focus
-            Container(width: double.infinity, padding: const EdgeInsets.all(AppTheme.spaceL), decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: colorScheme.outline.withOpacity(0.2)), boxShadow: [BoxShadow(color: colorScheme.shadow.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))]), child: Text(currentAyah!.text, style: theme.textTheme.headlineMedium?.copyWith(fontSize: 28, height: 1.8, fontWeight: FontWeight.w500), textAlign: TextAlign.center, textDirection: TextDirection.rtl)),
+                      // Arabic text - main focus
+                      Container(width: double.infinity, padding: const EdgeInsets.all(AppTheme.spaceL), decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: colorScheme.shadow.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))]), child: Text(currentAyah!.text, style: theme.textTheme.headlineMedium?.copyWith(fontSize: 28, height: 1.8, fontWeight: FontWeight.w500), textAlign: TextAlign.center, textDirection: TextDirection.rtl)),
 
-            const SizedBox(height: AppTheme.spaceL),
+                      SizedBox(height: AppTheme.spaceL),
 
-            // English translation
-            if (currentAyah!.englishTranslation != null) Container(width: double.infinity, padding: const EdgeInsets.all(AppTheme.spaceM), decoration: BoxDecoration(color: colorScheme.secondaryContainer.withOpacity(0.3), borderRadius: BorderRadius.circular(12)), child: Text(currentAyah!.englishTranslation!, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 16, height: 1.6, color: colorScheme.onSurface.withOpacity(0.8)), textAlign: TextAlign.center)),
+                      // English translation
+                      if (currentAyah!.englishTranslation != null) Container(width: double.infinity, padding: const EdgeInsets.all(AppTheme.spaceM), decoration: BoxDecoration(color: colorScheme.secondaryContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(12)), child: Text(currentAyah!.englishTranslation!, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 16, height: 1.6, color: colorScheme.onSurface.withValues(alpha: 0.8)), textAlign: TextAlign.center)),
 
-            const SizedBox(height: AppTheme.spaceXl),
+                      SizedBox(height: AppTheme.spaceXl),
 
-            // Playing indicator
-            if (isPlaying) Container(padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM, vertical: AppTheme.spaceS), decoration: BoxDecoration(color: colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.volume_up, color: colorScheme.primary, size: 20), const SizedBox(width: 8), Text('Now Playing', style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.w600))])),
-          ],
-        ),
-      ),
+                      // Playing indicator
+                      if (isPlaying) Container(padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM, vertical: AppTheme.spaceS), decoration: BoxDecoration(color: colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.volume_up, color: colorScheme.primary, size: 20), const SizedBox(width: 8), Text('Now Playing', style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.w600))])),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

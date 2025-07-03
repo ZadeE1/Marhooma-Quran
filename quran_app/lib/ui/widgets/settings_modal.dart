@@ -81,9 +81,12 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
                     return ListView.builder(
                       padding: const EdgeInsets.only(top: AppTheme.spaceS),
                       itemCount: snapshot.data!.length,
+                      itemExtent: 80.0, // Fixed height for better performance
+                      cacheExtent: 400.0, // Cache more items for smoother scrolling
                       itemBuilder: (context, index) {
                         final reciter = snapshot.data![index];
                         return ReciterTile(
+                          key: ValueKey(reciter.id), // Important for performance
                           reciter: reciter,
                           selected: _selectedReciter?.id == reciter.id,
                           onTap: () {
@@ -112,9 +115,12 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
                     return ListView.builder(
                       padding: const EdgeInsets.only(top: AppTheme.spaceS),
                       itemCount: snapshot.data!.length,
+                      itemExtent: 80.0, // Fixed height for better performance
+                      cacheExtent: 10.0, // Cache more items for smoother scrolling
                       itemBuilder: (context, index) {
                         final surah = snapshot.data![index];
                         return SurahTile(
+                          key: ValueKey(surah.number), // Important for performance
                           surah: surah,
                           selected: _selectedSurah?.number == surah.number,
                           onTap: () {

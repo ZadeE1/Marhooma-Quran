@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:just_audio/just_audio.dart';
 import '../../data/models/ayah.dart';
@@ -18,6 +19,8 @@ import '../widgets/animated_verse_transition.dart';
 ///
 /// Features focus mode that activates after inactivity to provide
 /// distraction-free reading with only Arabic text and translation visible.
+/// In focus mode, both the app UI elements and Android system UI bars
+/// (status bar and navigation bar) are hidden for a fully immersive experience.
 class SpecialDisplayScreen extends StatefulWidget {
   const SpecialDisplayScreen({super.key});
 
@@ -95,17 +98,32 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     });
   }
 
-  /// Smoothly enters focus mode with fade animation.
+  /// Hides Android system UI bars (status bar and navigation bar) for immersive experience.
+  void _hideSystemUI() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky, overlays: []);
+  }
+
+  /// Shows Android system UI bars back to normal state.
+  void _showSystemUI() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+  }
+
+  /// Smoothly enters focus mode with fade animation and hides system UI.
   void _enterFocusMode() {
     setState(() {
       _isInFocusMode = true;
     });
     _appBarAnimationController.forward();
     _bottomNavAnimationController.forward();
+    // Hide Android system UI bars for truly immersive experience
+    _hideSystemUI();
   }
 
-  /// Smoothly exits focus mode with fade animation.
+  /// Smoothly exits focus mode with fade animation and restores system UI.
   void _exitFocusModeWithAnimation() {
+    // Restore Android system UI bars immediately when exiting focus mode
+    _showSystemUI();
+
     // Use Future.wait to ensure both animations complete before updating state
     Future.wait([_appBarAnimationController.reverse(), _bottomNavAnimationController.reverse()]).then((_) {
       if (mounted) {
@@ -346,6 +364,8 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     _appBarAnimationController.dispose();
     _bottomNavAnimationController.dispose();
     _audioService.dispose();
+    // Ensure system UI is restored when disposing the screen
+    _showSystemUI();
     super.dispose();
   }
 
