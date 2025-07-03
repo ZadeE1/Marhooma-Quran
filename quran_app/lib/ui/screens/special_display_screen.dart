@@ -7,6 +7,7 @@ import '../../data/services/audio_player_service.dart';
 import '../../data/services/quran_text_service.dart';
 import '../widgets/settings_modal.dart';
 import '../widgets/current_verse_display.dart';
+import '../widgets/animated_verse_transition.dart';
 
 /// The main and only screen of the app - displays the current verse
 /// with settings to select reciter and surah.
@@ -41,6 +42,12 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   bool _isInFocusMode = false;
   Timer? _inactivityTimer;
   static const Duration _inactivityDuration = Duration(seconds: 10);
+
+  // Animation style for verse transitions - configurable
+  VerseTransitionStyle _transitionStyle = VerseTransitionStyle.elegant;
+
+  // Test counter for AnimatedSwitcher
+  int _counter = 0;
 
   // Efficient animation controllers for focus mode transitions
   late AnimationController _appBarAnimationController;
@@ -218,6 +225,43 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     }
   }
 
+  /// Cycles through different animation styles for verse transitions
+  void _cycleAnimationStyle() {
+    setState(() {
+      switch (_transitionStyle) {
+        case VerseTransitionStyle.fadeOnly:
+          _transitionStyle = VerseTransitionStyle.fadeScale;
+          break;
+        case VerseTransitionStyle.fadeScale:
+          _transitionStyle = VerseTransitionStyle.fadeSlide;
+          break;
+        case VerseTransitionStyle.fadeSlide:
+          _transitionStyle = VerseTransitionStyle.elegant;
+          break;
+        case VerseTransitionStyle.elegant:
+          _transitionStyle = VerseTransitionStyle.fadeOnly;
+          break;
+      }
+    });
+
+    // Show a brief feedback to user about the new style
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Animation style: ${_getAnimationStyleName()}'), duration: const Duration(milliseconds: 1500), behavior: SnackBarBehavior.floating));
+  }
+
+  /// Get a user-friendly name for the current animation style
+  String _getAnimationStyleName() {
+    switch (_transitionStyle) {
+      case VerseTransitionStyle.fadeOnly:
+        return 'Simple Fade';
+      case VerseTransitionStyle.fadeScale:
+        return 'Fade & Scale';
+      case VerseTransitionStyle.fadeSlide:
+        return 'Fade & Slide';
+      case VerseTransitionStyle.elegant:
+        return 'Elegant';
+    }
+  }
+
   /// Shows the settings modal for reciter and surah selection.
   void _showSettingsModal() {
     _onUserInteraction(); // This is a user interaction
@@ -250,6 +294,15 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
               title: const Text('Quran'),
               centerTitle: true,
               actions: [
+                // Animation style toggle button
+                IconButton(
+                  icon: const Icon(Icons.auto_awesome),
+                  onPressed: () {
+                    _onUserInteraction();
+                    _cycleAnimationStyle();
+                  },
+                  tooltip: 'Change Animation Style',
+                ),
                 // Debug button to manually toggle focus mode
                 IconButton(
                   icon: Icon(_isInFocusMode ? Icons.fullscreen_exit : Icons.fullscreen),
@@ -268,14 +321,66 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
             ),
           ),
         ),
-        // Body content with smooth ayah cross-fade transitions using Stack
+        // Body content with enhanced verse transitions
         body: SafeArea(
-          child: Stack(
+          child: Column(
             children: [
-              // Display A: Shows current or next ayah based on toggle
-              AnimatedOpacity(opacity: _showingNextAyah ? 0.0 : 1.0, duration: const Duration(milliseconds: 400), child: CurrentVerseDisplay(currentAyah: _currentDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode)),
-              // Display B: Shows the alternate content for smooth transitions
-              AnimatedOpacity(opacity: _showingNextAyah ? 1.0 : 0.0, duration: const Duration(milliseconds: 400), child: CurrentVerseDisplay(currentAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode)),
+              // ANIMATION TEST - Very prominent at the top
+              Container(
+                width: double.infinity,
+                color: Colors.red.shade100,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text('🧪 ANIMATION TEST', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            const Text('Counter (should animate):'),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 500),
+                              transitionBuilder: (Widget child, Animation<double> animation) {
+                                return FadeTransition(opacity: animation, child: child);
+                              },
+                              child: Container(key: ValueKey<int>(_counter), padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(8)), child: Text('$_counter', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _counter++;
+                                });
+                                print('🔥 Counter incremented to $_counter');
+                              },
+                              child: const Text('Count'),
+                            ),
+                            const SizedBox(height: 4),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _counter = 0;
+                                });
+                                print('🔄 Counter reset to 0');
+                              },
+                              child: const Text('Reset'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('⚠️ If number changes instantly without fade, animations are broken!', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red.shade700)),
+                  ],
+                ),
+              ),
+              // Main verse content below the test
+              Expanded(child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode, showingNext: _showingNextAyah, transitionStyle: _transitionStyle)),
             ],
           ),
         ),
