@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:just_audio/just_audio.dart';
 import '../../data/models/ayah.dart';
 import '../../data/models/reciter.dart';
 import '../../data/models/surah.dart';
 import '../../data/services/audio_player_service.dart';
 import '../../data/services/quran_text_service.dart';
+import '../../data/services/quran_api_service.dart';
 import '../widgets/settings_modal.dart';
-import '../widgets/current_verse_display.dart';
 import '../widgets/animated_verse_transition.dart';
 
 /// The main and only screen of the app - displays the current verse
@@ -28,6 +29,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   // Services for audio and text functionality
   final QuranAudioPlayer _audioService = QuranAudioPlayer();
   final QuranTextService _textService = QuranTextService();
+  final QuranApiService _quranApiService = QuranApiService();
 
   // Current state
   Reciter? _selectedReciter;
@@ -38,6 +40,9 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   bool _isPlaying = false;
   bool _showingNextAyah = false; // Toggle between current and next display
 
+  // Auto-advance to next surah functionality
+  List<Surah>? _allSurahs; // Cache of all surahs for navigation
+
   // Focus mode state and timer
   bool _isInFocusMode = false;
   Timer? _inactivityTimer;
@@ -45,9 +50,6 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
 
   // Animation style for verse transitions - configurable
   VerseTransitionStyle _transitionStyle = VerseTransitionStyle.elegant;
-
-  // Test counter for AnimatedSwitcher
-  int _counter = 0;
 
   // Efficient animation controllers for focus mode transitions
   late AnimationController _appBarAnimationController;
@@ -203,6 +205,21 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
         _isPlaying = playing;
       });
     });
+
+    // Listen for player state to detect surah completion
+    _audioService.playerStateStream.listen((playerState) {
+      print('🎵 Player state: ${playerState.processingState}, playing: ${playerState.playing}');
+
+      // Check if the surah has completed (playlist finished)
+      if (playerState.processingState == ProcessingState.completed && _selectedSurah != null && _selectedReciter != null) {
+        print('🎯 Surah ${_selectedSurah!.name} completed, attempting auto-advance...');
+
+        // Auto-advance to next surah after a brief delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _handleSurahCompletion();
+        });
+      }
+    });
   }
 
   /// Handles the completion of reciter and surah selection from the modal.
@@ -211,6 +228,9 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
       _selectedReciter = reciter;
       _selectedSurah = surah;
     });
+
+    // Load all surahs for potential auto-advance functionality
+    _loadAllSurahs();
 
     // Start playing the surah from the beginning
     _startPlayback();
@@ -266,6 +286,44 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   void _showSettingsModal() {
     _onUserInteraction(); // This is a user interaction
     showDialog(context: context, builder: (context) => SettingsModal(selectedReciter: _selectedReciter, selectedSurah: _selectedSurah, onSelectionComplete: _onSelectionComplete));
+  }
+
+  /// Loads and caches all surahs for navigation purposes
+  Future<void> _loadAllSurahs() async {
+    if (_allSurahs == null) {
+      _allSurahs = await _quranApiService.getSurahList();
+    }
+  }
+
+  /// Gets the next surah in sequence, or null if current is the last surah
+  Surah? _getNextSurah() {
+    if (_selectedSurah == null || _allSurahs == null) return null;
+
+    // Quran has 114 surahs, so if we're at surah 114, there's no next surah
+    if (_selectedSurah!.number >= 114) return null;
+
+    // Find the next surah by number
+    return _allSurahs!.firstWhere(
+      (surah) => surah.number == _selectedSurah!.number + 1,
+      orElse: () => _selectedSurah!, // Fallback to current if not found
+    );
+  }
+
+  /// Automatically advances to the next surah when current surah completes
+  Future<void> _handleSurahCompletion() async {
+    final nextSurah = _getNextSurah();
+
+    if (nextSurah != null && _selectedReciter != null) {
+      // Update the selected surah to the next one
+      setState(() {
+        _selectedSurah = nextSurah;
+      });
+
+      // Start playing the next surah
+      await _audioService.playSurah(surah: nextSurah, reciter: _selectedReciter!);
+    }
+    // Note: When reaching the end of the Quran (surah 114), playback simply stops
+    // without any notification, providing a clean, uninterrupted experience
   }
 
   @override
@@ -325,61 +383,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
         body: SafeArea(
           child: Column(
             children: [
-              // ANIMATION TEST - Very prominent at the top
-              Container(
-                width: double.infinity,
-                color: Colors.red.shade100,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Text('🧪 ANIMATION TEST', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Column(
-                          children: [
-                            const Text('Counter (should animate):'),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 500),
-                              transitionBuilder: (Widget child, Animation<double> animation) {
-                                return FadeTransition(opacity: animation, child: child);
-                              },
-                              child: Container(key: ValueKey<int>(_counter), padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(8)), child: Text('$_counter', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _counter++;
-                                });
-                                print('🔥 Counter incremented to $_counter');
-                              },
-                              child: const Text('Count'),
-                            ),
-                            const SizedBox(height: 4),
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _counter = 0;
-                                });
-                                print('🔄 Counter reset to 0');
-                              },
-                              child: const Text('Reset'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text('⚠️ If number changes instantly without fade, animations are broken!', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red.shade700)),
-                  ],
-                ),
-              ),
-              // Main verse content below the test
+              // Main verse content
               Expanded(child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode, showingNext: _showingNextAyah, transitionStyle: _transitionStyle)),
             ],
           ),
