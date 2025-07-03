@@ -337,99 +337,93 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _onUserInteraction,
-      onPanDown: (_) => _onUserInteraction(),
-      behavior: HitTestBehavior.opaque,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        // App bar that slides up and out during focus mode - always present but animated
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: SlideTransition(
-            position: _appBarSlideAnimation,
-            child: AppBar(
-              title: const Text('Quran'),
-              centerTitle: true,
-              actions: [
-                // Animation style toggle button
-                IconButton(
-                  icon: const Icon(Icons.auto_awesome),
-                  onPressed: () {
-                    _onUserInteraction();
-                    _cycleAnimationStyle();
-                  },
-                  tooltip: 'Change Animation Style',
-                ),
-                // Debug button to manually toggle focus mode
-                IconButton(
-                  icon: Icon(_isInFocusMode ? Icons.fullscreen_exit : Icons.fullscreen),
-                  onPressed: () {
-                    _onUserInteraction();
-                    if (_isInFocusMode) {
-                      _exitFocusModeWithAnimation();
-                    } else {
-                      _enterFocusMode();
-                    }
-                  },
-                  tooltip: _isInFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode',
-                ),
-                IconButton(icon: const Icon(Icons.settings), onPressed: _showSettingsModal, tooltip: 'Select Reciter & Surah'),
-              ],
-            ),
-          ),
-        ),
-        // Body content with enhanced verse transitions
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Main verse content
-              Expanded(child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode, showingNext: _showingNextAyah, transitionStyle: _transitionStyle)),
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      // App bar that slides up and out during focus mode - always present but animated
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: SlideTransition(
+          position: _appBarSlideAnimation,
+          child: AppBar(
+            title: const Text('Quran'),
+            centerTitle: true,
+            actions: [
+              // Animation style toggle button
+              IconButton(
+                icon: const Icon(Icons.auto_awesome),
+                onPressed: () {
+                  _onUserInteraction();
+                  _cycleAnimationStyle();
+                },
+                tooltip: 'Change Animation Style',
+              ),
+              IconButton(icon: const Icon(Icons.settings), onPressed: _showSettingsModal, tooltip: 'Select Reciter & Surah'),
             ],
           ),
         ),
-        // Bottom navigation - always present but slides down during focus mode
-        bottomNavigationBar:
-            _currentDisplayAyah != null && _selectedSurah != null
-                ? SlideTransition(
-                  position: _bottomNavSlideAnimation,
-                  child: SafeArea(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // Stop button
-                          IconButton(
-                            icon: const Icon(Icons.stop),
-                            iconSize: 32,
-                            onPressed: () async {
-                              _onUserInteraction();
-                              await _audioService.stop();
-                            },
-                          ),
-                          // Play/Pause button
-                          IconButton(
-                            icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
-                            onPressed: () async {
-                              _onUserInteraction();
-                              if (_isPlaying) {
-                                await _audioService.pause();
-                              } else {
-                                await _audioService.play();
-                              }
-                            },
-                          ),
-                          // Settings button
-                          IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
-                        ],
-                      ),
+      ),
+      // Body content with enhanced verse transitions
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Main verse content
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  if (_isInFocusMode) {
+                    _exitFocusModeWithAnimation();
+                  } else {
+                    _enterFocusMode();
+                  }
+                },
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+              ),
+            ),
+          ],
+        ),
+      ),
+      // Bottom navigation - always present but slides down during focus mode
+      bottomNavigationBar:
+          _currentDisplayAyah != null && _selectedSurah != null
+              ? SlideTransition(
+                position: _bottomNavSlideAnimation,
+                child: SafeArea(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)))),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        // Stop button
+                        IconButton(
+                          icon: const Icon(Icons.stop),
+                          iconSize: 32,
+                          onPressed: () async {
+                            _onUserInteraction();
+                            await _audioService.stop();
+                          },
+                        ),
+                        // Play/Pause button
+                        IconButton(
+                          icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
+                          onPressed: () async {
+                            _onUserInteraction();
+                            if (_isPlaying) {
+                              await _audioService.pause();
+                            } else {
+                              await _audioService.play();
+                            }
+                          },
+                        ),
+                        // Settings button
+                        IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
+                      ],
                     ),
                   ),
-                )
-                : null, // Only null when no content is available, not based on focus mode
-      ),
+                ),
+              )
+              : null, // Only null when no content is available, not based on focus mode
     );
   }
 }
