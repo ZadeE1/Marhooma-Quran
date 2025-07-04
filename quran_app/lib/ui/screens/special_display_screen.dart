@@ -10,6 +10,7 @@ import '../../data/services/quran_text_service.dart';
 import '../../data/services/quran_api_service.dart';
 import '../widgets/settings_modal.dart';
 import '../widgets/animated_verse_transition.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// The main and only screen of the app - displays the current verse
 /// with settings to select reciter and surah.
@@ -117,12 +118,16 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     _bottomNavAnimationController.forward();
     // Hide Android system UI bars for truly immersive experience
     _hideSystemUI();
+    // Keep the screen awake while in focus mode
+    WakelockPlus.enable();
   }
 
   /// Smoothly exits focus mode with fade animation and restores system UI.
   void _exitFocusModeWithAnimation() {
     // Restore Android system UI bars immediately when exiting focus mode
     _showSystemUI();
+    // Allow the screen to sleep again
+    WakelockPlus.disable();
 
     // Use Future.wait to ensure both animations complete before updating state
     Future.wait([_appBarAnimationController.reverse(), _bottomNavAnimationController.reverse()]).then((_) {
@@ -366,6 +371,8 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     _audioService.dispose();
     // Ensure system UI is restored when disposing the screen
     _showSystemUI();
+    // Ensure wakelock is disabled when the screen is disposed
+    WakelockPlus.disable();
     super.dispose();
   }
 
