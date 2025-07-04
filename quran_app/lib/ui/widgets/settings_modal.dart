@@ -6,6 +6,7 @@ import '../../data/services/quran_api_service.dart';
 import 'reciter_tile.dart';
 import 'surah_tile.dart';
 import 'animated_verse_transition.dart';
+import 'styled_dropdown.dart';
 
 /// Modal dialog for selecting reciter and surah for audio playback.
 ///
@@ -32,6 +33,7 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
 
   Reciter? _selectedReciter;
   Surah? _selectedSurah;
+  late VerseTransitionStyle _selectedAnimationStyle;
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
     _tabController = TabController(length: 3, vsync: this);
     _selectedReciter = widget.selectedReciter;
     _selectedSurah = widget.selectedSurah;
+    _selectedAnimationStyle = widget.animationStyle;
     _recitersFuture = _apiService.getReciterList();
     _surahsFuture = _apiService.getSurahList();
   }
@@ -54,6 +57,21 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
     if (_selectedReciter != null && _selectedSurah != null) {
       widget.onSelectionComplete(_selectedReciter!, _selectedSurah!);
       Navigator.of(context).pop();
+    }
+  }
+
+  /// Returns a user-friendly description for each animation style.
+  /// This helps users understand what each animation style does.
+  String _getAnimationStyleDescription(VerseTransitionStyle style) {
+    switch (style) {
+      case VerseTransitionStyle.fadeOnly:
+        return 'Simple and clean transition with only fade effect. Best for minimal distraction.';
+      case VerseTransitionStyle.fadeScale:
+        return 'Smooth fade with subtle scaling effect. Provides gentle visual feedback.';
+      case VerseTransitionStyle.fadeSlide:
+        return 'Fade with gentle slide from below. Creates a flowing reading experience.';
+      case VerseTransitionStyle.elegant:
+        return 'Sophisticated combination of effects. Recommended for the most polished experience.';
     }
   }
 
@@ -141,21 +159,35 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
                   return const Center(child: CircularProgressIndicator());
                 },
               ),
-              // Others Tab
+              // Others Tab - Settings and Configuration
               Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(AppTheme.spaceL),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Animation Style', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    DropdownButton<VerseTransitionStyle>(
-                      value: widget.animationStyle,
-                      items: [DropdownMenuItem(value: VerseTransitionStyle.fadeOnly, child: Text('Simple Fade')), DropdownMenuItem(value: VerseTransitionStyle.fadeScale, child: Text('Fade & Scale')), DropdownMenuItem(value: VerseTransitionStyle.fadeSlide, child: Text('Fade & Slide')), DropdownMenuItem(value: VerseTransitionStyle.elegant, child: Text('Elegant'))],
+                    // Animation Style Section
+                    Text('Animation Style', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: AppTheme.spaceM),
+
+                    // Styled dropdown for animation style selection
+                    StyledDropdown<VerseTransitionStyle>(
+                      value: _selectedAnimationStyle,
+                      hint: 'Select animation style',
+                      items: const [DropdownMenuItem(value: VerseTransitionStyle.fadeOnly, child: Text('Simple Fade')), DropdownMenuItem(value: VerseTransitionStyle.fadeScale, child: Text('Fade & Scale')), DropdownMenuItem(value: VerseTransitionStyle.fadeSlide, child: Text('Fade & Slide')), DropdownMenuItem(value: VerseTransitionStyle.elegant, child: Text('Elegant'))],
                       onChanged: (style) {
-                        if (style != null) widget.onAnimationStyleChanged(style);
+                        if (style != null) {
+                          setState(() {
+                            _selectedAnimationStyle = style;
+                          });
+                          widget.onAnimationStyleChanged(style);
+                        }
                       },
                     ),
+
+                    const SizedBox(height: AppTheme.spaceL),
+
+                    // Description text for the selected animation style
+                    Container(padding: const EdgeInsets.all(AppTheme.spaceM), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)), child: Text(_getAnimationStyleDescription(_selectedAnimationStyle), style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))),
                   ],
                 ),
               ),

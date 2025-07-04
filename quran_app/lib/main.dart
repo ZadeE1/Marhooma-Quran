@@ -15,6 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Quran App',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark, // Force dark mode always
       debugShowCheckedModeBanner: false, // Remove debug banner
       home: const SpecialDisplayScreen(),
     );

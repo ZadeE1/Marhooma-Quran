@@ -373,91 +373,188 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      // App bar that slides up and out during focus mode - always present but animated
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: SlideTransition(
-          position: _appBarSlideAnimation,
-          child: AppBar(
-            title: const Text('Quran'),
-            centerTitle: true,
-            actions: [
-              // Animation style toggle button
-              IconButton(
-                icon: const Icon(Icons.auto_awesome),
-                onPressed: () {
-                  _onUserInteraction();
-                  _cycleAnimationStyle();
-                },
-                tooltip: 'Change Animation Style',
+      // App bar that slides up and out during focus mode - hidden in landscape orientation
+      appBar:
+          MediaQuery.of(context).orientation == Orientation.landscape
+              ? null
+              : PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: SlideTransition(
+                  position: _appBarSlideAnimation,
+                  child: AppBar(
+                    title: const Text('Quran'),
+                    centerTitle: true,
+                    actions: [
+                      // Animation style toggle button
+                      IconButton(
+                        icon: const Icon(Icons.auto_awesome),
+                        onPressed: () {
+                          _onUserInteraction();
+                          _cycleAnimationStyle();
+                        },
+                        tooltip: 'Change Animation Style',
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
       // Body content with enhanced verse transitions
       body: SafeArea(
-        child: Column(
-          children: [
-            // Main verse content
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  if (_isInFocusMode) {
-                    _exitFocusModeWithAnimation();
-                  } else {
-                    _enterFocusMode();
-                  }
-                },
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: _isInFocusMode, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
-              ),
-            ),
-          ],
-        ),
-      ),
-      // Bottom navigation - always present but slides down during focus mode
-      bottomNavigationBar: SlideTransition(
-        position: _bottomNavSlideAnimation,
-        child: SafeArea(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)))),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Stop button - disabled when no content
-                IconButton(
-                  icon: const Icon(Icons.stop),
-                  iconSize: 32,
-                  onPressed:
-                      (_currentDisplayAyah != null && _selectedSurah != null)
-                          ? () async {
-                            _onUserInteraction();
-                            await _audioService.stop();
-                          }
-                          : null, // Disabled when no content
-                ),
-                // Center button - Play/Pause when content available, nothing otherwise
-                if (_currentDisplayAyah != null && _selectedSurah != null)
-                  IconButton(
-                    icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
-                    onPressed: () async {
-                      _onUserInteraction();
-                      if (_isPlaying) {
-                        await _audioService.pause();
-                      } else {
-                        await _audioService.play();
-                      }
-                    },
+        child: OrientationBuilder(
+          builder: (context, orientation) {
+            final isLandscape = orientation == Orientation.landscape;
+
+            if (_isInFocusMode) {
+              // Focus mode: Full screen verse display (always vertical layout)
+              return Column(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        _exitFocusModeWithAnimation();
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: true, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                    ),
                   ),
-                // Settings button - always available
-                IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
-              ],
-            ),
-          ),
+                ],
+              );
+            } else if (isLandscape) {
+              // Normal mode + Landscape: Horizontal split layout
+              return Row(
+                children: [
+                  // Left 75%: Verse display
+                  Expanded(
+                    flex: 3,
+                    child: GestureDetector(
+                      onTap: () {
+                        _enterFocusMode();
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                    ),
+                  ),
+                  // Right 25%: Navigation and controls
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(left: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), width: 1))),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Audio controls section
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              children: [
+                                // Stop button
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.stop),
+                                    iconSize: 48,
+                                    onPressed:
+                                        (_currentDisplayAyah != null && _selectedSurah != null)
+                                            ? () async {
+                                              _onUserInteraction();
+                                              await _audioService.stop();
+                                            }
+                                            : null,
+                                  ),
+                                ),
+
+                                // Play/Pause button
+                                if (_currentDisplayAyah != null && _selectedSurah != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    child: IconButton(
+                                      icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 64),
+                                      onPressed: () async {
+                                        _onUserInteraction();
+                                        if (_isPlaying) {
+                                          await _audioService.pause();
+                                        } else {
+                                          await _audioService.play();
+                                        }
+                                      },
+                                    ),
+                                  ),
+
+                                // Settings button
+                                IconButton(icon: const Icon(Icons.tune), iconSize: 48, onPressed: _showSettingsModal),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              // Normal mode + Portrait: Original vertical layout
+              return Column(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        _enterFocusMode();
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
         ),
       ),
+      // Bottom navigation in focus mode or portrait mode
+      bottomNavigationBar:
+          (_isInFocusMode || MediaQuery.of(context).orientation == Orientation.portrait)
+              ? SlideTransition(
+                position: _bottomNavSlideAnimation,
+                child: SafeArea(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)))),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        // Stop button - disabled when no content
+                        IconButton(
+                          icon: const Icon(Icons.stop),
+                          iconSize: 32,
+                          onPressed:
+                              (_currentDisplayAyah != null && _selectedSurah != null)
+                                  ? () async {
+                                    _onUserInteraction();
+                                    await _audioService.stop();
+                                  }
+                                  : null,
+                        ),
+                        // Center button - Play/Pause when content available
+                        if (_currentDisplayAyah != null && _selectedSurah != null)
+                          IconButton(
+                            icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 48),
+                            onPressed: () async {
+                              _onUserInteraction();
+                              if (_isPlaying) {
+                                await _audioService.pause();
+                              } else {
+                                await _audioService.play();
+                              }
+                            },
+                          ),
+                        // Settings button - always available
+                        IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              : null, // No bottom nav in normal mode (horizontal layout)
     );
   }
 }
