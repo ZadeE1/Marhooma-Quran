@@ -61,6 +61,9 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   late Animation<Offset> _appBarSlideAnimation;
   late Animation<Offset> _bottomNavSlideAnimation;
 
+  // Indicates if the audio player is preparing the surah (building playlist / initial buffering)
+  bool _isPreparingAudio = false;
+
   @override
   void initState() {
     super.initState();
@@ -264,7 +267,19 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   /// Starts audio playback of the selected surah.
   Future<void> _startPlayback() async {
     if (_selectedReciter != null && _selectedSurah != null) {
+      // Show loading overlay while preparing audio
+      setState(() {
+        _isPreparingAudio = true;
+      });
+
       await _audioService.playSurah(surah: _selectedSurah!, reciter: _selectedReciter!);
+
+      // Hide loading overlay once preparation is done
+      if (mounted) {
+        setState(() {
+          _isPreparingAudio = false;
+        });
+      }
     }
   }
 
@@ -406,116 +421,123 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                 ),
               ),
       // Body content with enhanced verse transitions
-      body: SafeArea(
-        child: OrientationBuilder(
-          builder: (context, orientation) {
-            final isLandscape = orientation == Orientation.landscape;
+      body: Stack(
+        children: [
+          // Main content
+          SafeArea(
+            child: OrientationBuilder(
+              builder: (context, orientation) {
+                final isLandscape = orientation == Orientation.landscape;
 
-            if (_isInFocusMode) {
-              // Focus mode: Full screen verse display (always vertical layout)
-              return Column(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        _exitFocusModeWithAnimation();
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: true, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
-                    ),
-                  ),
-                ],
-              );
-            } else if (isLandscape) {
-              // Normal mode + Landscape: Horizontal split layout
-              return Row(
-                children: [
-                  // Left 75%: Verse display
-                  Expanded(
-                    flex: 3,
-                    child: GestureDetector(
-                      onTap: () {
-                        _enterFocusMode();
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
-                    ),
-                  ),
-                  // Right 25%: Navigation and controls
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(left: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), width: 1))),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Audio controls section
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              children: [
-                                // Stop button
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 16),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.stop),
-                                    iconSize: 48,
-                                    onPressed:
-                                        (_currentDisplayAyah != null && _selectedSurah != null)
-                                            ? () async {
-                                              _onUserInteraction();
-                                              await _audioService.stop();
-                                            }
-                                            : null,
-                                  ),
-                                ),
-
-                                // Play/Pause button
-                                if (_currentDisplayAyah != null && _selectedSurah != null)
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 16),
-                                    child: IconButton(
-                                      icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 64),
-                                      onPressed: () async {
-                                        _onUserInteraction();
-                                        if (_isPlaying) {
-                                          await _audioService.pause();
-                                        } else {
-                                          await _audioService.play();
-                                        }
-                                      },
-                                    ),
-                                  ),
-
-                                // Settings button
-                                IconButton(icon: const Icon(Icons.tune), iconSize: 48, onPressed: _showSettingsModal),
-                              ],
-                            ),
-                          ),
-                        ],
+                if (_isInFocusMode) {
+                  // Focus mode: Full screen verse display (always vertical layout)
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _exitFocusModeWithAnimation();
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: true, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              );
-            } else {
-              // Normal mode + Portrait: Original vertical layout
-              return Column(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        _enterFocusMode();
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
-                    ),
-                  ),
-                ],
-              );
-            }
-          },
-        ),
+                    ],
+                  );
+                } else if (isLandscape) {
+                  // Normal mode + Landscape: Horizontal split layout
+                  return Row(
+                    children: [
+                      // Left 75%: Verse display
+                      Expanded(
+                        flex: 3,
+                        child: GestureDetector(
+                          onTap: () {
+                            _enterFocusMode();
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                        ),
+                      ),
+                      // Right 25%: Navigation and controls
+                      Expanded(
+                        flex: 1,
+                        child: Container(
+                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, border: Border(left: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), width: 1))),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Audio controls section
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  children: [
+                                    // Stop button
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 16),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.stop),
+                                        iconSize: 48,
+                                        onPressed:
+                                            (_currentDisplayAyah != null && _selectedSurah != null)
+                                                ? () async {
+                                                  _onUserInteraction();
+                                                  await _audioService.stop();
+                                                }
+                                                : null,
+                                      ),
+                                    ),
+
+                                    // Play/Pause button
+                                    if (_currentDisplayAyah != null && _selectedSurah != null)
+                                      Container(
+                                        margin: const EdgeInsets.only(bottom: 16),
+                                        child: IconButton(
+                                          icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 64),
+                                          onPressed: () async {
+                                            _onUserInteraction();
+                                            if (_isPlaying) {
+                                              await _audioService.pause();
+                                            } else {
+                                              await _audioService.play();
+                                            }
+                                          },
+                                        ),
+                                      ),
+
+                                    // Settings button
+                                    IconButton(icon: const Icon(Icons.tune), iconSize: 48, onPressed: _showSettingsModal),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                } else {
+                  // Normal mode + Portrait: Original vertical layout
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _enterFocusMode();
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              },
+            ),
+          ),
+          // Loading overlay
+          if (_isPreparingAudio) Container(color: Colors.black.withOpacity(0.5), child: const Center(child: CircularProgressIndicator())),
+        ],
       ),
       // Bottom navigation in focus mode or portrait mode
       bottomNavigationBar:

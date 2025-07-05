@@ -94,7 +94,13 @@ class QuranAudioPlayer {
     }
 
     final playlist = ConcatenatingAudioSource(
-      useLazyPreparation: false,
+      // Enable lazy preparation so that only the first ayah is prepared immediately.
+      // This significantly decreases the time between pressing the "Done" button
+      // in the surah-selecting modal and the audio actually starting, because the
+      // player no longer issues network HEAD requests for every single ayah
+      // before beginning playback. Subsequent ayahs will be prepared on demand
+      // just before they are needed.
+      useLazyPreparation: true,
       children: List.generate(totalAyahs, (i) {
         final ayahNumber = i + 1;
         final url = _buildAyahUrl(surah.number, ayahNumber, reciter.subfolder);
