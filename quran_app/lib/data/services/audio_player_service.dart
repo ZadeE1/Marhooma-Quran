@@ -1,6 +1,8 @@
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
+import 'package:http/http.dart' as http;
 import '../models/surah.dart';
 import '../models/reciter.dart';
 import 'dart:developer' as developer;
@@ -51,6 +53,23 @@ class QuranAudioPlayer {
   /// Get duration of current ayah
   Stream<Duration?> get durationStream => _audioPlayer.durationStream;
 
+  /// Build an [AudioSource] appropriate for the current platform.
+  ///
+  /// `LockCachingAudioSource` offers on-device caching which is only
+  /// supported on Android and iOS. On desktop and web, we fall back to a
+  /// plain network stream using [AudioSource.uri] to avoid runtime issues
+  /// where caching is not yet implemented (e.g. Windows).
+  AudioSource _buildAudioSource(Uri uri, MediaItem tag) {
+    final isMobile = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+
+    if (isMobile) {
+      return LockCachingAudioSource(uri, tag: tag);
+    }
+
+    // Desktop/web fallback – streaming without caching.
+    return AudioSource.uri(uri, tag: tag);
+  }
+
   /// Start playing the given [surah] recited by [reciter].
   ///
   /// If [fromAyah] is provided, playback starts from that specific ayah
@@ -64,20 +83,28 @@ class QuranAudioPlayer {
     _currentReciter = reciter;
 
     final int totalAyahs = surah.ayahCount;
+
+    // Test first URL before creating full playlist
+    final firstAyahUrl = _buildAyahUrl(surah.number, 1, reciter.subfolder);
+    final isFirstUrlValid = await _validateUrl(firstAyahUrl);
+
+    if (!isFirstUrlValid) {
+      developer.log('First ayah URL is invalid: $firstAyahUrl', name: 'QuranAudioPlayer');
+      return;
+    }
+
     final playlist = ConcatenatingAudioSource(
       useLazyPreparation: false,
       children: List.generate(totalAyahs, (i) {
         final ayahNumber = i + 1;
-        final surahPadded = surah.number.toString().padLeft(3, '0');
-        final ayahPadded = ayahNumber.toString().padLeft(3, '0');
-        final url = 'https://everyayah.com/data/${reciter.subfolder}/$surahPadded$ayahPadded.mp3';
+        final url = _buildAyahUrl(surah.number, ayahNumber, reciter.subfolder);
 
         developer.log('Adding to playlist: $url', name: 'QuranAudioPlayer');
 
-        // Create audio source with metadata for Android media controls
-        return LockCachingAudioSource(
+        // Create an audio source suited for the current platform.
+        return _buildAudioSource(
           Uri.parse(url),
-          tag: MediaItem(
+          MediaItem(
             id: url, // Unique ID for the track
             album: surah.name,
             title: 'Ayah $ayahNumber',
@@ -97,6 +124,27 @@ class QuranAudioPlayer {
       developer.log('Started playing ${surah.name} by ${reciter.name}', name: 'QuranAudioPlayer');
     } catch (e, st) {
       developer.log('Error during playSurah: $e', name: 'QuranAudioPlayer', error: e, stackTrace: st);
+    }
+  }
+
+  /// Build the URL for a specific ayah
+  String _buildAyahUrl(int surahNumber, int ayahNumber, String reciterSubfolder) {
+    final surahPadded = surahNumber.toString().padLeft(3, '0');
+    final ayahPadded = ayahNumber.toString().padLeft(3, '0');
+    return 'https://everyayah.com/data/$reciterSubfolder/$surahPadded$ayahPadded.mp3';
+  }
+
+  /// Validate if a URL is accessible
+  Future<bool> _validateUrl(String url) async {
+    try {
+      developer.log('Validating URL: $url', name: 'QuranAudioPlayer');
+      final response = await http.head(Uri.parse(url));
+      final isValid = response.statusCode == 200;
+      developer.log('URL validation result: $isValid (status: ${response.statusCode})', name: 'QuranAudioPlayer');
+      return isValid;
+    } catch (e) {
+      developer.log('URL validation failed: $e', name: 'QuranAudioPlayer');
+      return false;
     }
   }
 
@@ -173,6 +221,42 @@ class QuranAudioPlayer {
 
   /// Check if audio is currently playing
   bool get isPlaying => _audioPlayer.playing;
+
+  /// Test method to verify URL construction - for debugging
+  void testUrlConstruction() {
+    developer.log('=== Testing URL Construction ===', name: 'QuranAudioPlayer');
+
+    // Test Al-Fatiha (surah 1) with Abdul Basit
+    final testUrl = _buildAyahUrl(1, 1, 'Abdul_Basit_Murattal_64kbps');
+    developer.log('Test URL: $testUrl', name: 'QuranAudioPlayer');
+
+    // Test with different padding
+    final testUrl2 = _buildAyahUrl(2, 10, 'Abdul_Basit_Murattal_64kbps');
+    developer.log('Test URL 2: $testUrl2', name: 'QuranAudioPlayer');
+
+    final testUrl3 = _buildAyahUrl(114, 6, 'Abdul_Basit_Murattal_64kbps');
+    developer.log('Test URL 3: $testUrl3', name: 'QuranAudioPlayer');
+  }
+
+  /// Test method to play a single audio file - for debugging Windows audio
+  Future<void> testSingleAudio() async {
+    developer.log('=== Testing Single Audio File ===', name: 'QuranAudioPlayer');
+
+    try {
+      final testUrl = 'https://everyayah.com/data/Abdul_Basit_Murattal_64kbps/001001.mp3';
+      developer.log('Testing single URL: $testUrl', name: 'QuranAudioPlayer');
+
+      final audioSource = _buildAudioSource(Uri.parse(testUrl), MediaItem(id: testUrl, album: 'Test', title: 'Test Ayah', artist: 'Test Reciter'));
+
+      await _audioPlayer.setAudioSource(audioSource);
+      await _audioPlayer.load();
+      await _audioPlayer.play();
+
+      developer.log('Single audio test started successfully', name: 'QuranAudioPlayer');
+    } catch (e, st) {
+      developer.log('Single audio test failed: $e', name: 'QuranAudioPlayer', error: e, stackTrace: st);
+    }
+  }
 
   /// Dispose of the audio player and clean up resources
   void dispose() {

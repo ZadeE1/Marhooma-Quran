@@ -35,6 +35,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   just_audio: ^0.9.36
+  # Windows platform implementation for just_audio
+  just_audio_windows: ^0.2.2
+  http: ^1.1.0
   google_fonts: ^6.1.0
   path_provider: ^2.1.1
   quran: ^1.3.3

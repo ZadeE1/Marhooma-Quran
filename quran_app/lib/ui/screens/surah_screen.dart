@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
 import '../../data/services/audio_player_service.dart';
 import '../../data/models/ayah.dart';
 import '../../data/models/reciter.dart';
@@ -27,16 +28,22 @@ class _SurahScreenState extends State<SurahScreen> {
     super.initState();
     _ayahs = _textService.getAyahs(widget.surah.number);
 
+    // Test URL construction for debugging
+    _audioService.testUrlConstruction();
+
     _audioService.currentAyahStream.listen((ayah) {
+      developer.log('UI: Current ayah changed to: $ayah', name: 'SurahScreen');
       setState(() => _playingAyah = ayah);
     });
 
     _audioService.playingStream.listen((playing) {
+      developer.log('UI: Playing state changed to: $playing', name: 'SurahScreen');
       setState(() => _isPlaying = playing);
     });
   }
 
   Future<void> _playSurah({int? fromAyah}) async {
+    developer.log('UI: Attempting to play surah ${widget.surah.number} (${widget.surah.name}) from ayah $fromAyah with reciter ${widget.reciter.name}', name: 'SurahScreen');
     await _audioService.playSurah(surah: widget.surah, reciter: widget.reciter, fromAyah: fromAyah);
   }
 
@@ -49,7 +56,18 @@ class _SurahScreenState extends State<SurahScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.surah.name)),
+      appBar: AppBar(
+        title: Text(widget.surah.name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              developer.log('UI: Test button pressed', name: 'SurahScreen');
+              _audioService.testSingleAudio();
+            },
+          ),
+        ],
+      ),
       body: FutureBuilder<List<Ayah>>(
         future: _ayahs,
         builder: (context, snapshot) {
