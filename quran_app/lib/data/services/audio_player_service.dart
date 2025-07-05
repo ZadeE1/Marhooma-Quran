@@ -1,5 +1,6 @@
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import '../models/surah.dart';
 import '../models/reciter.dart';
 import 'dart:developer' as developer;
@@ -74,7 +75,15 @@ class QuranAudioPlayer {
         developer.log('Adding to playlist: $url', name: 'QuranAudioPlayer');
 
         // Create audio source with metadata for Android media controls
-        return LockCachingAudioSource(Uri.parse(url));
+        return LockCachingAudioSource(
+          Uri.parse(url),
+          tag: MediaItem(
+            id: url, // Unique ID for the track
+            album: surah.name,
+            title: 'Ayah $ayahNumber',
+            artist: reciter.name,
+          ),
+        );
       }),
     );
 

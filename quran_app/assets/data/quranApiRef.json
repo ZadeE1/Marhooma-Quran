@@ -157,7 +157,7 @@
     },
     "9":{
        "subfolder":"AbdulSamad_64kbps_QuranExplorer.Com",
-       "name":"AbdulSamad QuranExplorer.Com",
+       "name":"AbdulSamad",
        "bitrate":"64kbps"
     },
     "10":{
@@ -172,12 +172,12 @@
     },
     "12":{
        "subfolder":"Ahmed_ibn_Ali_al-Ajamy_64kbps_QuranExplorer.Com",
-       "name":"Ahmed ibn Ali al-Ajamy QuranExplorer.Com",
+       "name":"Ahmed ibn Ali al-Ajamy - 2",
        "bitrate":"64kbps"
     },
     "13":{
      "subfolder":"Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net",
-     "name":"Ahmed ibn Ali al-Ajamy KetabAllah.Net",
+     "name":"Ahmed ibn Ali al-Ajamy - 1",
      "bitrate":"128kbps"
     },
     "14":{
@@ -342,7 +342,7 @@
     },
     "46":{
        "subfolder":"MultiLanguage\/Basfar_Walk_192kbps",
-       "name":"MultiLanguage\/Basfar Walk",
+       "name":"MultiLanguage/Basfar Walk",
        "bitrate":"192kbps"
     },
     "47":{
@@ -357,7 +357,7 @@
     },
     "49":{
        "subfolder":"Parhizgar_48kbps",
-       "name" : "Parhizgar_64Kbps",
+       "name" : "Parhizgar",
        "bitrate":"64Kbps"
     },   
     "50":{
@@ -447,22 +447,22 @@
     },
     "67":{
       "subfolder":"Yasser_Ad-Dussary_128kbps",
-      "name":"Yasser_Ad-Dussary",
+      "name":"Yasser Ad-Dussary",
       "bitrate":"128kbps"
     },
     "68":{
       "subfolder":"Nasser_Alqatami_128kbps",
-      "name":"Nasser_Alqatami",
+      "name":"Nasser Alqatami",
       "bitrate":"128kbps"
     },
     "69":{
       "subfolder":"Ali_Hajjaj_AlSuesy_128kbps",
-      "name":"Ali_Hajjaj_AlSuesy",
+      "name":"Ali Hajjaj AlSuesy",
       "bitrate":"128kbps"
     },
     "70":{
       "subfolder":"Sahl_Yassin_128kbps",
-      "name":"Sahl_Yassin",
+      "name":"Sahl Yassin",
       "bitrate":"128kbps"
     },
     "71":{

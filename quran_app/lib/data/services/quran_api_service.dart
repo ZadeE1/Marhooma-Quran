@@ -162,9 +162,13 @@ class QuranApiService {
 
     final data = await _loadQuranData();
     _reciterListCache = [];
+    final reciterNames = <String>{};
     data.forEach((key, value) {
       if (int.tryParse(key) != null && value is Map<String, dynamic>) {
-        _reciterListCache!.add(Reciter.fromJson(int.parse(key), value));
+        final reciter = Reciter.fromJson(int.parse(key), value);
+        if (reciterNames.add(reciter.name)) {
+          _reciterListCache!.add(reciter);
+        }
       }
     });
     return _reciterListCache!;
