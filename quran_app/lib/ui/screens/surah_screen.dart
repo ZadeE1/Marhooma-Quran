@@ -100,7 +100,8 @@ class _SurahScreenState extends State<SurahScreen> {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          return const Center(child: CircularProgressIndicator());
+          // Loading indicator removed - show empty container instead
+          return const SizedBox.shrink();
         },
       ),
       bottomNavigationBar:

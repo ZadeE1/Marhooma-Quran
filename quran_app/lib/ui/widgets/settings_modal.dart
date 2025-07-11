@@ -122,6 +122,8 @@ class _SettingsModalState extends State<SettingsModal> with TickerProviderStateM
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error loading reciters: ${snapshot.error}'));
                   }
+                  // Loading indicator removed - show empty container instead
+                  return const SizedBox.shrink();
                   return const Center(child: CircularProgressIndicator());
                 },
               ),

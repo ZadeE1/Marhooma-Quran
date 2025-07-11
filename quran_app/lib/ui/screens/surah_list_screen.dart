@@ -37,6 +37,8 @@ class SurahListScreen extends StatelessWidget {
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
+        // Loading indicator removed - show empty container instead
+        return const SizedBox.shrink();
         return const Center(child: CircularProgressIndicator());
       },
     );

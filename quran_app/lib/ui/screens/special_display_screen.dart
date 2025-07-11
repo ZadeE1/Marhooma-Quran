@@ -535,8 +535,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
               },
             ),
           ),
-          // Loading overlay
-          if (_isPreparingAudio) Container(color: Colors.black.withOpacity(0.5), child: const Center(child: CircularProgressIndicator())),
+          // Loading overlay removed
         ],
       ),
       // Bottom navigation in focus mode or portrait mode
