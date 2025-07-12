@@ -430,7 +430,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                 final isLandscape = orientation == Orientation.landscape;
 
                 if (_isInFocusMode) {
-                  // Focus mode: Full screen verse display (always vertical layout)
+                  // Focus mode: Full screen verse display (always vertical layout) - minimal UI
                   return Column(
                     children: [
                       Expanded(
@@ -439,7 +439,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                             _exitFocusModeWithAnimation();
                           },
                           behavior: HitTestBehavior.opaque,
-                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: true, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
                         ),
                       ),
                     ],
@@ -451,12 +451,34 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                       // Left 75%: Verse display
                       Expanded(
                         flex: 3,
-                        child: GestureDetector(
-                          onTap: () {
-                            _enterFocusMode();
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                        child: Column(
+                          children: [
+                            // Dynamic indicators for landscape mode
+                            if (_selectedSurah != null && _currentDisplayAyah != null)
+                              Container(
+                                margin: const EdgeInsets.only(top: 8, bottom: 4),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // Surah and verse indicator
+                                    Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)), child: Text('${_selectedSurah!.name} - Verse ${_currentDisplayAyah!.numberInSurah}', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.w500))),
+                                    const SizedBox(height: 4),
+                                    // Now Playing indicator
+                                    Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(_isPlaying ? Icons.volume_up : Icons.volume_off, size: 14, color: Theme.of(context).colorScheme.onSecondaryContainer), const SizedBox(width: 4), Text(_isPlaying ? 'Now Playing' : 'Paused', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSecondaryContainer))])),
+                                  ],
+                                ),
+                              ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  _enterFocusMode();
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       // Right 25%: Navigation and controls
@@ -469,15 +491,16 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                             children: [
                               // Audio controls section
                               Container(
-                                padding: const EdgeInsets.all(24),
+                                padding: const EdgeInsets.all(16),
                                 child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     // Stop button
                                     Container(
-                                      margin: const EdgeInsets.only(bottom: 16),
+                                      margin: const EdgeInsets.only(bottom: 12),
                                       child: IconButton(
                                         icon: const Icon(Icons.stop),
-                                        iconSize: 48,
+                                        iconSize: 40,
                                         onPressed:
                                             (_currentDisplayAyah != null && _selectedSurah != null)
                                                 ? () async {
@@ -491,9 +514,9 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                                     // Play/Pause button
                                     if (_currentDisplayAyah != null && _selectedSurah != null)
                                       Container(
-                                        margin: const EdgeInsets.only(bottom: 16),
+                                        margin: const EdgeInsets.only(bottom: 12),
                                         child: IconButton(
-                                          icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 64),
+                                          icon: Icon(_isPlaying ? Icons.pause_circle : Icons.play_circle, size: 56),
                                           onPressed: () async {
                                             _onUserInteraction();
                                             if (_isPlaying) {
@@ -506,7 +529,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                                       ),
 
                                     // Settings button
-                                    IconButton(icon: const Icon(Icons.tune), iconSize: 48, onPressed: _showSettingsModal),
+                                    IconButton(icon: const Icon(Icons.tune), iconSize: 40, onPressed: _showSettingsModal),
                                   ],
                                 ),
                               ),
@@ -520,13 +543,29 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                   // Normal mode + Portrait: Original vertical layout
                   return Column(
                     children: [
+                      // Dynamic indicators for portrait mode
+                      if (_selectedSurah != null && _currentDisplayAyah != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8, bottom: 4),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Surah and verse indicator
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)), child: Text('${_selectedSurah!.name} - Verse ${_currentDisplayAyah!.numberInSurah}', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.w500))),
+                              const SizedBox(height: 4),
+                              // Now Playing indicator
+                              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(_isPlaying ? Icons.volume_up : Icons.volume_off, size: 14, color: Theme.of(context).colorScheme.onSecondaryContainer), const SizedBox(width: 4), Text(_isPlaying ? 'Now Playing' : 'Paused', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSecondaryContainer))])),
+                            ],
+                          ),
+                        ),
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
                             _enterFocusMode();
                           },
                           behavior: HitTestBehavior.opaque,
-                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, focusMode: false, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
+                          child: AnimatedVerseTransition(currentAyah: _currentDisplayAyah, nextAyah: _nextDisplayAyah, currentSurah: _selectedSurah, isPlaying: _isPlaying, showingNext: _showingNextAyah, transitionStyle: _transitionStyle),
                         ),
                       ),
                     ],
