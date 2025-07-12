@@ -101,8 +101,8 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     // Bottom navigation slides down and out
     _bottomNavSlideAnimation = Tween<Offset>(begin: const Offset(0, 0), end: const Offset(0, 1)).animate(CurvedAnimation(parent: _bottomNavAnimationController, curve: Curves.easeInOut));
 
-    // Skip widget slides right and out
-    _skipWidgetSlideAnimation = Tween<Offset>(begin: const Offset(0, 0), end: const Offset(1, 0)).animate(CurvedAnimation(parent: _skipWidgetAnimationController, curve: Curves.easeInOut));
+    // Skip widget slides right and out - using much larger offset to ensure it fully disappears
+    _skipWidgetSlideAnimation = Tween<Offset>(begin: const Offset(0, 0), end: const Offset(3, 0)).animate(CurvedAnimation(parent: _skipWidgetAnimationController, curve: Curves.easeInOut));
   }
 
   /// Starts or restarts the inactivity timer for focus mode.
@@ -132,8 +132,14 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
       _isInFocusMode = true;
     });
     _appBarAnimationController.forward();
-    _bottomNavAnimationController.forward();
     _skipWidgetAnimationController.forward();
+    print('🎯 Skip widget animation started: ${_skipWidgetAnimationController.value}');
+
+    // Only animate bottom navigation bar in portrait mode
+    if (MediaQuery.of(context).orientation == Orientation.portrait) {
+      _bottomNavAnimationController.forward();
+    }
+
     // Hide Android system UI bars for truly immersive experience
     _hideSystemUI();
     // Keep the screen awake while in focus mode
@@ -147,8 +153,16 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     // Allow the screen to sleep again
     WakelockPlus.disable();
 
+    // Build list of animations to reverse based on orientation
+    List<Future<void>> animations = [_appBarAnimationController.reverse(), _skipWidgetAnimationController.reverse()];
+
+    // Only animate bottom navigation bar in portrait mode
+    if (MediaQuery.of(context).orientation == Orientation.portrait) {
+      animations.add(_bottomNavAnimationController.reverse());
+    }
+
     // Use Future.wait to ensure all animations complete before updating state
-    Future.wait([_appBarAnimationController.reverse(), _bottomNavAnimationController.reverse(), _skipWidgetAnimationController.reverse()]).then((_) {
+    Future.wait(animations).then((_) {
       if (mounted) {
         setState(() {
           _isInFocusMode = false;
@@ -490,7 +504,36 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                 child: SlideTransition(
                   position: _appBarSlideAnimation,
                   child: AppBar(
-                    title: const Text('Quran'),
+                    title: _selectedSurah != null && _currentDisplayAyah != null
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${_selectedSurah!.name} - Verse ${_currentDisplayAyah!.numberInSurah}',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isPlaying ? Icons.volume_up : Icons.volume_off,
+                                    size: 14,
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _isPlaying ? 'Now Playing' : 'Paused',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : const Text('Quran'),
                     centerTitle: true,
                     actions: [
                       // Animation style toggle button
@@ -539,22 +582,6 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                         flex: 3,
                         child: Column(
                           children: [
-                            // Dynamic indicators for landscape mode
-                            if (_selectedSurah != null && _currentDisplayAyah != null)
-                              Container(
-                                margin: const EdgeInsets.only(top: 8, bottom: 4),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    // Surah and verse indicator
-                                    Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)), child: Text('${_selectedSurah!.name} - Verse ${_currentDisplayAyah!.numberInSurah}', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.w500))),
-                                    const SizedBox(height: 4),
-                                    // Now Playing indicator
-                                    Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(_isPlaying ? Icons.volume_up : Icons.volume_off, size: 14, color: Theme.of(context).colorScheme.onSecondaryContainer), const SizedBox(width: 4), Text(_isPlaying ? 'Now Playing' : 'Paused', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSecondaryContainer))])),
-                                  ],
-                                ),
-                              ),
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
@@ -629,22 +656,6 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                   // Normal mode + Portrait: Original vertical layout
                   return Column(
                     children: [
-                      // Dynamic indicators for portrait mode
-                      if (_selectedSurah != null && _currentDisplayAyah != null)
-                        Container(
-                          margin: const EdgeInsets.only(top: 8, bottom: 4),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Surah and verse indicator
-                              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)), child: Text('${_selectedSurah!.name} - Verse ${_currentDisplayAyah!.numberInSurah}', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.w500))),
-                              const SizedBox(height: 4),
-                              // Now Playing indicator
-                              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(_isPlaying ? Icons.volume_up : Icons.volume_off, size: 14, color: Theme.of(context).colorScheme.onSecondaryContainer), const SizedBox(width: 4), Text(_isPlaying ? 'Now Playing' : 'Paused', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSecondaryContainer))])),
-                            ],
-                          ),
-                        ),
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
