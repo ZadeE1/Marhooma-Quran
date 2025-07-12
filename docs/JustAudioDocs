@@ -1,0 +1,588 @@
+TITLE: Quick Synopsis - Basic Audio Playback (Dart)
+DESCRIPTION: Demonstrates the basic usage of the AudioPlayer class, including creating a player, loading a URL, playing, pausing, seeking, setting speed and volume, and stopping the player.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_0
+
+LANGUAGE: Dart
+CODE:
+```
+import 'package:just_audio/just_audio.dart';
+
+final player = AudioPlayer();                   // Create a player
+final duration = await player.setUrl(           // Load a URL
+    'https://foo.com/bar.mp3');                 // Schemes: (https: | file: | asset: )
+player.play();                                  // Play without waiting for completion
+await player.play();                            // Play while waiting for completion
+await player.pause();                           // Pause but remain ready to play
+await player.seek(Duration(seconds: 10));       // Jump to the 10 second position
+await player.setSpeed(2.0);                     // Twice as fast
+await player.setVolume(0.5);                    // Half as loud
+await player.stop();                            // Stop and free resources
+```
+
+----------------------------------------
+
+TITLE: Working with Gapless Playlists (Dart)
+DESCRIPTION: Provides examples for creating, loading, and managing a playlist of AudioSource objects for gapless playback. Includes methods for seeking within the playlist, setting loop and shuffle modes, and modifying the playlist dynamically.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_3
+
+LANGUAGE: Dart
+CODE:
+```
+// Define the playlist
+final playlist = <AudioSource>[
+  AudioSource.uri(Uri.parse('https://example.com/track1.mp3')),
+  AudioSource.uri(Uri.parse('https://example.com/track2.mp3')),
+  AudioSource.uri(Uri.parse('https://example.com/track3.mp3')),
+];
+// Load the playlist
+await player.setAudioSources(playlist, initialIndex: 0, initialPosition: Duration.zero,
+  useLazyPreparation: true,                    // Load each item just in time
+  shuffleOrder: DefaultShuffleOrder(),         // Customise the shuffle algorithm
+);
+await player.seekToNext();                     // Skip to the next item
+await player.seekToPrevious();                 // Skip to the previous item
+await player.seek(Duration.zero, index: 2);    // Skip to the start of track3.mp3
+await player.setLoopMode(LoopMode.all);        // Set playlist to loop (off|all|one)
+await player.setShuffleModeEnabled(true);      // Shuffle playlist order (true|false)
+
+// Update the playlist
+await player.addAudioSource(newChild1);
+await player.insertAudioSource(3, newChild2);
+await player.removeAudioSourceAt(3);
+await player.moveAudioSource(2, 1);
+```
+
+----------------------------------------
+
+TITLE: Handling Player Errors in just_audio (Dart)
+DESCRIPTION: Illustrates how to catch PlayerException and PlayerInterruptedException during audio source loading using a try-catch block. Also shows how to listen to the errorStream for errors occurring during playback.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_7
+
+LANGUAGE: Dart
+CODE:
+```
+// Catching errors at load time
+try {
+  await player.setUrl("https://s3.amazonaws.com/404-file.mp3");
+} on PlayerException catch (e) {
+  // iOS/macOS: maps to NSError.code
+  // Android: maps to ExoPlayerException.type
+  // Web: maps to MediaError.code
+  // Linux/Windows: maps to PlayerErrorCode.index
+  print("Error code: ${e.code}");
+  // iOS/macOS: maps to NSError.localizedDescription
+  // Android: maps to ExoPlaybackException.getMessage()
+  // Web/Linux: a generic message
+  // Windows: MediaPlayerError.message
+  print("Error message: ${e.message}");
+} on PlayerInterruptedException catch (e) {
+  // This call was interrupted since another audio source was loaded or the
+  // player was stopped or disposed before this audio source could complete
+  // loading.
+  print("Connection aborted: ${e.message}");
+} catch (e) {
+  // Fallback for all other errors
+  print('An error occured: $e');
+}
+
+// Listening to errors during playback (e.g. lost network connection)
+player.errorStream.listen((PlayerException e) {
+  print('Error code: ${e.code}');
+  print('Error message: ${e.message}');
+  print('AudioSource index: ${e.index}');
+});
+```
+
+----------------------------------------
+
+TITLE: Listening to Player State Streams (Dart)
+DESCRIPTION: Demonstrates how to subscribe to the playerStateStream to react to changes in the player's playing status and processing state. Lists other available state streams for monitoring various player properties.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_8
+
+LANGUAGE: Dart
+CODE:
+```
+player.playerStateStream.listen((state) {
+  if (state.playing) ... else ...
+  switch (state.processingState) {
+    case ProcessingState.idle: ...
+    case ProcessingState.loading: ...
+    case ProcessingState.buffering: ...
+    case ProcessingState.ready: ...
+    case ProcessingState.completed: ...
+  }
+});
+
+// See also:
+// - durationStream
+// - positionStream
+// - bufferedPositionStream
+// - sequenceStateStream
+// - sequenceStream
+// - currentIndexStream
+// - icyMetadataStream
+// - playingStream
+// - processingStateStream
+// - loopModeStream
+// - shuffleModeEnabledStream
+// - volumeStream
+// - speedStream
+// - playbackEventStream
+```
+
+----------------------------------------
+
+TITLE: Initialize JustAudioBackground
+DESCRIPTION: Call JustAudioBackground.init in your app's main method to configure background playback settings, such as the Android notification channel.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/README.md#_snippet_1
+
+LANGUAGE: dart
+CODE:
+```
+Future<void> main() async {
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
+  runApp(MyApp());
+}
+```
+
+----------------------------------------
+
+TITLE: Tag AudioSource with MediaItem
+DESCRIPTION: Attach a MediaItem tag to each IndexedAudioSource to provide metadata for display in the background notification and remote controls.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/README.md#_snippet_3
+
+LANGUAGE: dart
+CODE:
+```
+AudioSource.uri(
+  Uri.parse('https://example.com/song1.mp3'),
+  tag: MediaItem(
+    // Specify a unique ID for each media item:
+    id: '1',
+    // Metadata to display in the notification:
+    album: "Album name",
+    title: "Song name",
+    artUri: Uri.parse('https://example.com/albumart.jpg'),
+  ),
+),
+```
+
+----------------------------------------
+
+TITLE: Configure AndroidManifest.xml
+DESCRIPTION: Modify your AndroidManifest.xml file to add necessary permissions, update the main activity, and register the AudioService and MediaButtonReceiver components for background playback and media button handling.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/README.md#_snippet_4
+
+LANGUAGE: xml
+CODE:
+```
+<manifest xmlns:tools="http://schemas.android.com/tools" ...>
+  <!-- ADD THESE TWO PERMISSIONS -->
+  <uses-permission android:name="android.permission.WAKE_LOCK"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <!-- ALSO ADD THIS PERMISSION IF TARGETING SDK 34 -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+  
+  <application ...>
+    
+    ...
+    
+    <!-- EDIT THE android:name ATTRIBUTE IN YOUR EXISTING "ACTIVITY" ELEMENT -->
+    <activity android:name="com.ryanheise.audioservice.AudioServiceActivity" ...>
+      ...
+    </activity>
+    
+    <!-- ADD THIS "SERVICE" element -->
+    <service android:name="com.ryanheise.audioservice.AudioService"
+        android:foregroundServiceType="mediaPlayback"
+        android:exported="true" tools:ignore="Instantiatable">
+      <intent-filter>
+        <action android:name="android.media.browse.MediaBrowserService" />
+      </intent-filter>
+    </service>
+
+    <!-- ADD THIS "RECEIVER" element -->
+    <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"
+        android:exported="true" tools:ignore="Instantiatable">
+      <intent-filter>
+        <action android:name="android.intent.action.MEDIA_BUTTON" />
+      </intent-filter>
+    </receiver> 
+  </application>
+</manifest>
+```
+
+----------------------------------------
+
+TITLE: Configure iOS Info.plist
+DESCRIPTION: Add the 'audio' background mode to your iOS Info.plist file to allow the app to play audio in the background.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/README.md#_snippet_5
+
+LANGUAGE: xml
+CODE:
+```
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+
+```
+
+----------------------------------------
+
+TITLE: Add Internet Permission Android XML
+DESCRIPTION: Adds the necessary permission to AndroidManifest.xml to allow the application to access audio files from the internet.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_9
+
+LANGUAGE: xml
+CODE:
+```
+<uses-permission android:name="android.permission.INTERNET"/>
+```
+
+----------------------------------------
+
+TITLE: Configure Audio Session for Speech (Podcast) in Dart
+DESCRIPTION: This snippet demonstrates how to obtain the audio session instance and configure it using the AudioSessionConfiguration.speech() profile, which is recommended for podcast players or audio book readers to ensure appropriate interaction with other audio sources like navigators or phone calls. Requires the audio_session package.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_19
+
+LANGUAGE: Dart
+CODE:
+```
+final session = await AudioSession.instance;
+await session.configure(AudioSessionConfiguration.speech());
+```
+
+----------------------------------------
+
+TITLE: Working with Multiple Audio Players (Dart)
+DESCRIPTION: Shows how to initialize and manage multiple AudioPlayer instances simultaneously or sequentially, including playing, pausing, looping one player while another plays, and stopping both players.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_1
+
+LANGUAGE: Dart
+CODE:
+```
+// Set up two players with different audio files
+final player1 = AudioPlayer(); await player1.setUrl(...);
+final player2 = AudioPlayer(); await player2.setUrl(...);
+
+// Play both at the same time
+player1.play();
+player2.play();
+
+// Play one after the other
+await player1.play();
+await player2.play();
+
+// Loop player1 until player2 finishes
+await player1.setLoopMode(LoopMode.one);
+player1.play();          // Don't wait
+await player2.play();    // Wait for player2 to finish
+await player1.pause();   // Finish player1
+
+// Free platform decoders and buffers for each player.
+await player1.stop();
+await player2.stop();
+```
+
+----------------------------------------
+
+TITLE: Configure Localhost Cleartext Android XML
+DESCRIPTION: Creates a network security configuration file (network_security_config.xml) to specifically allow cleartext traffic only for the localhost address (127.0.0.1), providing a more secure alternative to enabling cleartext for all URLs.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_11
+
+LANGUAGE: xml
+CODE:
+```
+<?xml version=\"1.0\" encoding=\"utf-8\"?>\
+<network-security-config>\
+\	<domain-config cleartextTrafficPermitted=\"true\">\
+\	\	<domain includeSubdomains=\"false\">127.0.0.1</domain>\
+\	</domain-config>\
+</network-security-config>
+```
+
+----------------------------------------
+
+TITLE: Managing Audio Cache with just_audio (Dart)
+DESCRIPTION: Shows how to clear the global asset cache directory and how to use LockCachingAudioSource to download and cache an audio file while it's being played. Also shows how to clear the cache for a specific source.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_5
+
+LANGUAGE: Dart
+CODE:
+```
+// Clear the asset cache directory
+await AudioPlayer.clearAssetCache();
+
+// Download and cache audio while playing it (experimental)
+final audioSource = LockCachingAudioSource('https://foo.com/bar.mp3');
+await player.setAudioSource(audioSource);
+// Delete the cached file
+await audioSource.clearCache();
+```
+
+----------------------------------------
+
+TITLE: Configuring HTTP Headers with just_audio (Dart)
+DESCRIPTION: Demonstrates how to set a custom HTTP user agent when initializing the AudioPlayer and how to provide specific request headers when loading an audio source via setUrl. Notes the default use of a proxy for header implementation.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_4
+
+LANGUAGE: Dart
+CODE:
+```
+// Setting the HTTP user agent
+final player = AudioPlayer(
+  userAgent: 'myradioapp/1.0 (Linux;Android 11) https://myradioapp.com',
+  useProxyForRequestHeaders: true, // default
+);
+
+// Setting request headers
+final duration = await player.setUrl('https://foo.com/bar.mp3',
+    headers: {'header1': 'value1', 'header2': 'value2'});
+```
+
+----------------------------------------
+
+TITLE: Working with Audio Clips (Dart)
+DESCRIPTION: Illustrates how to play specific segments (clips) of an audio source by setting start and end durations using the setClip method. It also shows how to clear the clip region.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_2
+
+LANGUAGE: Dart
+CODE:
+```
+// Play clip 2-4 seconds followed by clip 10-12 seconds
+await player.setClip(start: Duration(seconds: 2), end: Duration(seconds: 4));
+await player.play(); await player.pause();
+await player.setClip(start: Duration(seconds: 10), end: Duration(seconds: 12));
+await player.play(); await player.pause();
+
+await player.setClip(); // Clear clip region
+```
+
+----------------------------------------
+
+TITLE: Force ExoPlayer Version Android Gradle
+DESCRIPTION: Adds explicit dependencies for specific ExoPlayer modules in the app's build.gradle file to force all plugins using ExoPlayer to use the same version, resolving potential 'Duplicate class' errors.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_13
+
+LANGUAGE: gradle
+CODE:
+```
+dependencies {\
+    def exoplayer_version = \"...specify-version-here....\"\
+    implementation \"com.google.android.exoplayer:exoplayer-core:$exoplayer_version\"\
+    implementation \"com.google.android.exoplayer:exoplayer-dash:$exoplayer_version\"\
+    implementation \"com.google.android.exoplayer:exoplayer-hls:$exoplayer_version\"\
+    implementation \"com.google.android.exoplayer:exoplayer-smoothstreaming:$exoplayer_version\"\
+}
+```
+
+----------------------------------------
+
+TITLE: Add just_audio_background Dependency
+DESCRIPTION: Add the just_audio_background package as a dependency in your pubspec.yaml file, alongside the just_audio package.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/README.md#_snippet_0
+
+LANGUAGE: yaml
+CODE:
+```
+dependencies:
+  just_audio: any # substitute version number
+  just_audio_background: any # substitute version number
+
+```
+
+----------------------------------------
+
+TITLE: Reference Network Security Config Android XML
+DESCRIPTION: Adds the android:networkSecurityConfig attribute to the application element in AndroidManifest.xml to reference the custom network security configuration file, limiting cleartext traffic permissions.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_12
+
+LANGUAGE: xml
+CODE:
+```
+<application ... android:networkSecurityConfig="@xml/network_security_config">
+```
+
+----------------------------------------
+
+TITLE: Add Windows Dependencies pubspec.yaml
+DESCRIPTION: Adds required dependencies for Windows support implementations (like just_audio_media_kit) to the pubspec.yaml file.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_17
+
+LANGUAGE: yaml
+CODE:
+```
+dependencies:\
+  just_audio: any # substitute version number\
+  just_audio_media_kit: any # substitute version number\
+  media_kit_libs_windows_audio: any # substitute version number
+```
+
+----------------------------------------
+
+TITLE: Add Network Client Entitlement macOS Entitlements
+DESCRIPTION: Adds the com.apple.security.network.client key to DebugProfile.entitlements and Release.entitlements files to grant the macOS application permission to access the network.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_15
+
+LANGUAGE: xml
+CODE:
+```
+<key>com.apple.security.network.client</key>\
+<true/>
+```
+
+----------------------------------------
+
+TITLE: Adding Linux Dependencies in pubspec.yaml
+DESCRIPTION: This YAML snippet shows how to add the necessary dependencies to your pubspec.yaml file to enable Linux support for the just_audio plugin, specifically using the just_audio_media_kit implementation.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_18
+
+LANGUAGE: yaml
+CODE:
+```
+dependencies:
+  just_audio: any # substitute version number
+  just_audio_media_kit: any # substitute version number
+  media_kit_libs_linux: any # substitute version number
+```
+
+----------------------------------------
+
+TITLE: Implementing Custom StreamAudioSource (Dart)
+DESCRIPTION: Provides an example of creating a custom StreamAudioSource subclass (MyCustomSource) that feeds audio data from a list of bytes into the player. Explains the implementation of the request method.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_6
+
+LANGUAGE: Dart
+CODE:
+```
+// Feed your own stream of bytes into the player
+class MyCustomSource extends StreamAudioSource {
+  final List<int> bytes;
+  MyCustomSource(this.bytes);
+  
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    start ??= 0;
+    end ??= bytes.length;
+    return StreamAudioResponse(
+      sourceLength: bytes.length,
+      contentLength: end - start,
+      offset: start,
+      stream: Stream.value(bytes.sublist(start, end)),
+      contentType: 'audio/mpeg',
+    );
+  }
+}
+
+await player.setAudioSource(MyCustomSource());
+player.play();
+```
+
+----------------------------------------
+
+TITLE: Opening iOS Xcode Workspace
+DESCRIPTION: Use this command in the terminal from the root of your Flutter project to open the iOS Xcode workspace. This is necessary to access and modify project settings and assets, such as the launch screen images.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/example/ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md#_snippet_0
+
+LANGUAGE: Shell
+CODE:
+```
+open ios/Runner.xcworkspace
+```
+
+----------------------------------------
+
+TITLE: Opening iOS Project in Xcode (Shell)
+DESCRIPTION: This command opens the Xcode workspace file for the iOS part of your Flutter project. This is necessary to access and modify project settings and assets, such as the launch screen assets in Assets.xcassets.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/example/ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md#_snippet_0
+
+LANGUAGE: Shell
+CODE:
+```
+open ios/Runner.xcworkspace
+```
+
+----------------------------------------
+
+TITLE: Enable Cleartext Traffic Android XML
+DESCRIPTION: Adds the android:usesCleartextTraffic attribute to the application element in AndroidManifest.xml to allow connections to non-HTTPS URLs, including the localhost proxy used by just_audio.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_10
+
+LANGUAGE: xml
+CODE:
+```
+<application ... android:usesCleartextTraffic="true">
+```
+
+----------------------------------------
+
+TITLE: Enable Arbitrary Loads macOS Info.plist
+DESCRIPTION: Adds the NSAppTransportSecurity dictionary and NSAllowsArbitraryLoads key to the Info.plist file to allow connections to non-HTTPS URLs or use features depending on the proxy on macOS.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_16
+
+LANGUAGE: xml
+CODE:
+```
+<key>NSAppTransportSecurity</key>\
+<dict>\
+    <key>NSAllowsArbitraryLoads</key>\
+    <true/>\
+</dict>
+```
+
+----------------------------------------
+
+TITLE: Enable Arbitrary Loads iOS Info.plist
+DESCRIPTION: Adds the NSAppTransportSecurity dictionary and NSAllowsArbitraryLoads key to the Info.plist file to allow connections to non-HTTPS URLs or use features depending on the proxy on iOS.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/README.md#_snippet_14
+
+LANGUAGE: xml
+CODE:
+```
+<key>NSAppTransportSecurity</key>\
+<dict>\
+    <key>NSAllowsArbitraryLoads</key>\
+    <true/>\
+</dict>
+```
+
+----------------------------------------
+
+TITLE: Registering Service Worker in JavaScript
+DESCRIPTION: Checks if the browser supports Service Workers and, if so, registers the 'flutter_service_worker.js' file as the service worker once the window has finished loading. This is a standard pattern for enabling offline capabilities and background tasks in web applications.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/example/web/index.html#_snippet_0
+
+LANGUAGE: JavaScript
+CODE:
+```
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('flutter_service_worker.js'); }); }
+```
+
+----------------------------------------
+
+TITLE: Registering Service Worker in JavaScript
+DESCRIPTION: This snippet checks if the Service Worker API is available in the browser and, if so, registers the 'flutter_service_worker.js' file as a service worker when the window has finished loading.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio/example/web/index.html#_snippet_0
+
+LANGUAGE: JavaScript
+CODE:
+```
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('flutter_service_worker.js'); }); }
+```
+
+----------------------------------------
+
+TITLE: Instantiate AudioPlayer
+DESCRIPTION: Create an instance of the AudioPlayer class as you normally would when using just_audio.
+SOURCE: https://github.com/ryanheise/just_audio/blob/minor/just_audio_background/README.md#_snippet_2
+
+LANGUAGE: dart
+CODE:
+```
+player = AudioPlayer();
+```

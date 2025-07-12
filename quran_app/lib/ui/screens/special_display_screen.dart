@@ -64,6 +64,10 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
   // Indicates if the audio player is preparing the surah (building playlist / initial buffering)
   bool _isPreparingAudio = false;
 
+  // Skip to ayah floating widget state
+  bool _showSkipToAyahWidget = false;
+  final TextEditingController _skipToAyahController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -340,6 +344,75 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     );
   }
 
+  /// Handles skipping to a specific ayah number
+  Future<void> _handleSkipToAyah() async {
+    // Check if widget is still mounted
+    if (!mounted) return;
+
+    final ayahNumberText = _skipToAyahController.text.trim();
+    if (ayahNumberText.isEmpty) {
+      return;
+    }
+
+    final ayahNumber = int.tryParse(ayahNumberText);
+    if (ayahNumber == null || ayahNumber < 1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid ayah number'), duration: Duration(seconds: 2)));
+      }
+      return;
+    }
+
+    // Store surah reference to avoid null issues during async operations
+    final currentSurah = _selectedSurah;
+    if (currentSurah == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a surah first'), duration: Duration(seconds: 2)));
+      }
+      return;
+    }
+
+    if (ayahNumber > currentSurah.ayahCount) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ayah number must be between 1 and ${currentSurah.ayahCount}'), duration: const Duration(seconds: 2)));
+      }
+      return;
+    }
+
+    try {
+      final success = await _audioService.skipToAyah(ayahNumber);
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
+
+      if (success) {
+        setState(() {
+          _showSkipToAyahWidget = false;
+        });
+        _skipToAyahController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Skipped to ayah $ayahNumber'), duration: const Duration(seconds: 1)));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to skip to ayah'), duration: Duration(seconds: 2)));
+      }
+    } catch (e) {
+      // Handle any unexpected errors
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error skipping to ayah: ${e.toString()}'), duration: const Duration(seconds: 2)));
+      }
+    }
+  }
+
+  /// Toggles the skip to ayah widget visibility
+  void _toggleSkipToAyahWidget() {
+    if (!mounted) return;
+
+    setState(() {
+      _showSkipToAyahWidget = !_showSkipToAyahWidget;
+      if (!_showSkipToAyahWidget) {
+        _skipToAyahController.clear();
+      }
+    });
+  }
+
   /// Loads and caches all surahs for navigation purposes
   Future<void> _loadAllSurahs() async {
     if (_allSurahs == null) {
@@ -383,6 +456,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     _inactivityTimer?.cancel();
     _appBarAnimationController.dispose();
     _bottomNavAnimationController.dispose();
+    _skipToAyahController.dispose();
     _audioService.dispose();
     // Ensure system UI is restored when disposing the screen
     _showSystemUI();
@@ -575,6 +649,51 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
             ),
           ),
           // Loading overlay removed
+
+          // Skip to ayah floating widget
+          if (_currentDisplayAyah != null && _selectedSurah != null)
+            Positioned(
+              bottom: 100,
+              right: 16,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Skip to ayah input field - shows when widget is expanded
+                  if (_showSkipToAyahWidget)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Material(
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3))),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(width: 80, child: TextField(controller: _skipToAyahController, keyboardType: TextInputType.number, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium, decoration: InputDecoration(hintText: _selectedSurah != null ? '1-${_selectedSurah!.ayahCount}' : '1-10', hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 4)), onSubmitted: (_) => _handleSkipToAyah())),
+                              const SizedBox(width: 8),
+                              IconButton(icon: const Icon(Icons.arrow_forward, size: 20), onPressed: _handleSkipToAyah, padding: const EdgeInsets.all(4), constraints: const BoxConstraints(minWidth: 28, minHeight: 28)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Skip to ayah toggle button
+                  FloatingActionButton.small(
+                    onPressed: () {
+                      _onUserInteraction();
+                      _toggleSkipToAyahWidget();
+                    },
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                    child: Icon(_showSkipToAyahWidget ? Icons.close : Icons.skip_next),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
       // Bottom navigation in focus mode or portrait mode

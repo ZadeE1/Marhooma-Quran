@@ -210,6 +210,42 @@ class QuranAudioPlayer {
     }
   }
 
+  /// Skip to a specific ayah index in the current playlist
+  ///
+  /// [ayahIndex] is 1-based (first ayah is 1, not 0)
+  /// Returns true if successful, false if the index is out of range
+  Future<bool> skipToAyah(int ayahIndex) async {
+    try {
+      if (_currentSurah == null) {
+        developer.log('Cannot skip to ayah: no surah currently loaded', name: 'QuranAudioPlayer');
+        return false;
+      }
+
+      // Convert 1-based ayah index to 0-based for the audio player
+      final zeroBasedIndex = ayahIndex - 1;
+
+      // Validate the index is within bounds
+      if (zeroBasedIndex < 0 || zeroBasedIndex >= _currentSurah!.ayahCount) {
+        developer.log('Cannot skip to ayah $ayahIndex: index out of range (1-${_currentSurah!.ayahCount})', name: 'QuranAudioPlayer');
+        return false;
+      }
+
+      // Check if the audio player has a valid audio source
+      if (_audioPlayer.audioSource == null) {
+        developer.log('Cannot skip to ayah: no audio source loaded', name: 'QuranAudioPlayer');
+        return false;
+      }
+
+      // Seek to the specific index with error handling
+      await _audioPlayer.seek(Duration.zero, index: zeroBasedIndex);
+      developer.log('Skipped to ayah $ayahIndex (index $zeroBasedIndex)', name: 'QuranAudioPlayer');
+      return true;
+    } catch (e, stackTrace) {
+      developer.log('Error during skipToAyah: $e', name: 'QuranAudioPlayer', error: e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
   /// Seek to specific position in current ayah
   Future<void> seek(Duration position) async {
     try {
