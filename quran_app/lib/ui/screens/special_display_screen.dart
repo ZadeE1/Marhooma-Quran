@@ -597,6 +597,36 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                 ),
               ),
             ),
+          
+          // Arrow pointing to settings button - only show when no content is selected
+          if (_currentDisplayAyah == null && _selectedSurah == null)
+            Positioned(
+              bottom: 100,
+              right: 60,
+              child: SlideTransition(
+                position: _bottomNavSlideAnimation,
+                child: Container(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 32,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap to start',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       // Bottom navigation - always present, animation state controls visibility
@@ -635,7 +665,7 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
                     },
                   ),
                 // Settings button - always available
-                IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal),
+                IconButton(icon: const Icon(Icons.tune), iconSize: 32, onPressed: _showSettingsModal, tooltip: 'Settings'),
               ],
             ),
           ),
