@@ -15,6 +15,54 @@ class SurahTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(margin: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM, vertical: AppTheme.spaceS), elevation: 2, child: ListTile(onTap: onTap, selected: selected, leading: CircleAvatar(backgroundColor: colorScheme.secondaryContainer, foregroundColor: colorScheme.onSecondaryContainer, child: Text(surah.number.toString(), style: Theme.of(context).textTheme.labelLarge)), title: Text(surah.name, style: Theme.of(context).textTheme.titleMedium), subtitle: Text('Ayahs: ${surah.ayahCount}', style: Theme.of(context).textTheme.bodySmall), trailing: selected ? Icon(Icons.check_circle, color: colorScheme.primary) : const Icon(Icons.chevron_right)));
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM, vertical: AppTheme.spaceS),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        side: selected
+            ? BorderSide(color: colorScheme.primary, width: 2)
+            : BorderSide.none,
+        borderRadius: BorderRadius.circular(AppTheme.spaceM),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.spaceM),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceM, vertical: AppTheme.spaceS),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  backgroundColor: colorScheme.secondaryContainer,
+                  foregroundColor: colorScheme.onSecondaryContainer,
+                  child: Text(
+                    surah.number.toString(),
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spaceM),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        surah.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        'Ayahs: ${surah.ayahCount}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
