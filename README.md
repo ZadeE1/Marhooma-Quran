@@ -157,7 +157,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **EveryAyah.com**: High-quality Quranic recitations
 - **Quran Package**: Offline text and translation data
 - **Just Audio**: Robust Flutter audio framework
-- **Islamic Community**: Guidance and feedback on spiritual UX
 
 ---
 
