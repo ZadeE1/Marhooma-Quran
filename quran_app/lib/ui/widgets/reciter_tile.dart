@@ -12,27 +12,6 @@ class ReciterTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        side: selected
-            ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
-            : BorderSide.none,
-        borderRadius: BorderRadius.circular(AppTheme.spaceM),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.spaceM),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spaceM),
-          child: Center(
-            child: Text(
-              reciter.name,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ),
-      ),
-    );
+    return Card(shape: RoundedRectangleBorder(side: selected ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2) : BorderSide.none, borderRadius: BorderRadius.circular(AppTheme.spaceM)), child: InkWell(borderRadius: BorderRadius.circular(AppTheme.spaceM), onTap: onTap, child: Padding(padding: const EdgeInsets.all(AppTheme.spaceM), child: Center(child: Text(reciter.name, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium)))));
   }
 }

@@ -30,45 +30,61 @@ class SpecialDisplayScreen extends StatefulWidget {
 }
 
 class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with TickerProviderStateMixin {
-  // Services for audio and text functionality
-  final QuranAudioPlayer _audioService = QuranAudioPlayer();
-  final QuranTextService _textService = QuranTextService();
-  final QuranApiService _quranApiService = QuranApiService();
-
-  // Current state
-  Reciter? _selectedReciter;
-  Surah? _selectedSurah;
-  Ayah? _currentDisplayAyah; // What's currently visible on screen
-  Ayah? _nextDisplayAyah; // What will be shown next (pre-loaded)
-  int? _lastAyahNumber; // Track the last ayah number we processed
-  bool _isPlaying = false;
-  bool _showingNextAyah = false; // Toggle between current and next display
+  static const Duration _inactivityDuration = Duration(seconds: 10);
 
   // Auto-advance to next surah functionality
   List<Surah>? _allSurahs; // Cache of all surahs for navigation
 
-  // Focus mode state and timer
-  bool _isInFocusMode = false;
-  Timer? _inactivityTimer;
-  static const Duration _inactivityDuration = Duration(seconds: 10);
-
-  // Animation style for verse transitions - configurable
-  VerseTransitionStyle _transitionStyle = VerseTransitionStyle.elegant;
-
   // Efficient animation controllers for focus mode transitions
   late AnimationController _appBarAnimationController;
-  late AnimationController _bottomNavAnimationController;
-  late AnimationController _skipWidgetAnimationController;
-  late Animation<Offset> _appBarSlideAnimation;
-  late Animation<Offset> _bottomNavSlideAnimation;
-  late Animation<Offset> _skipWidgetSlideAnimation;
 
+  late Animation<Offset> _appBarSlideAnimation;
+  // Services for audio and text functionality
+  final QuranAudioPlayer _audioService = QuranAudioPlayer();
+
+  late AnimationController _bottomNavAnimationController;
+  late Animation<Offset> _bottomNavSlideAnimation;
+  Ayah? _currentDisplayAyah; // What's currently visible on screen
+  Timer? _inactivityTimer;
+  // Focus mode state and timer
+  bool _isInFocusMode = false;
+
+  bool _isPlaying = false;
   // Indicates if the audio player is preparing the surah (building playlist / initial buffering)
   bool _isPreparingAudio = false;
 
+  int? _lastAyahNumber; // Track the last ayah number we processed
+  Ayah? _nextDisplayAyah; // What will be shown next (pre-loaded)
+  final QuranApiService _quranApiService = QuranApiService();
+  // Current state
+  Reciter? _selectedReciter;
+
+  Surah? _selectedSurah;
   // Skip to ayah floating widget state
   bool _showSkipToAyahWidget = false;
+
+  bool _showingNextAyah = false; // Toggle between current and next display
   final TextEditingController _skipToAyahController = TextEditingController();
+  late AnimationController _skipWidgetAnimationController;
+  late Animation<Offset> _skipWidgetSlideAnimation;
+  final QuranTextService _textService = QuranTextService();
+  // Animation style for verse transitions - configurable
+  VerseTransitionStyle _transitionStyle = VerseTransitionStyle.elegant;
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    _appBarAnimationController.dispose();
+    _bottomNavAnimationController.dispose();
+    _skipWidgetAnimationController.dispose();
+    _skipToAyahController.dispose();
+    _audioService.dispose();
+    // Ensure system UI is restored when disposing the screen
+    _showSystemUI();
+    // Ensure wakelock is disabled when the screen is disposed
+    WakelockPlus.disable();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -465,21 +481,6 @@ class _SpecialDisplayScreenState extends State<SpecialDisplayScreen> with Ticker
     }
     // Note: When reaching the end of the Quran (surah 114), playback simply stops
     // without any notification, providing a clean, uninterrupted experience
-  }
-
-  @override
-  void dispose() {
-    _inactivityTimer?.cancel();
-    _appBarAnimationController.dispose();
-    _bottomNavAnimationController.dispose();
-    _skipWidgetAnimationController.dispose();
-    _skipToAyahController.dispose();
-    _audioService.dispose();
-    // Ensure system UI is restored when disposing the screen
-    _showSystemUI();
-    // Ensure wakelock is disabled when the screen is disposed
-    WakelockPlus.disable();
-    super.dispose();
   }
 
   @override

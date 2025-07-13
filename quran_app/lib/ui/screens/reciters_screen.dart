@@ -21,20 +21,11 @@ class RecitersScreen extends StatelessWidget {
         if (snapshot.hasData) {
           return GridView.builder(
             padding: const EdgeInsets.all(AppTheme.spaceS),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 3 / 2,
-              crossAxisSpacing: AppTheme.spaceS,
-              mainAxisSpacing: AppTheme.spaceS,
-            ),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 3 / 2, crossAxisSpacing: AppTheme.spaceS, mainAxisSpacing: AppTheme.spaceS),
             itemCount: snapshot.data!.length,
             itemBuilder: (context, index) {
               final reciter = snapshot.data![index];
-              return ReciterTile(
-                reciter: reciter,
-                selected: selectedReciter?.id == reciter.id,
-                onTap: () => onReciterSelected(reciter),
-              );
+              return ReciterTile(reciter: reciter, selected: selectedReciter?.id == reciter.id, onTap: () => onReciterSelected(reciter));
             },
           );
         } else if (snapshot.hasError) {
